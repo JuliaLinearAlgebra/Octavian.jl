@@ -11,5 +11,4 @@ versioninfo()
 
 @info("Running tests with $(Threads.nthreads()) threads")
 
-@testset "Augustus.jl" begin
-end
+include("macros.jl")
