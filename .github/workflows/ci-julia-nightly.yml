@@ -1,4 +1,4 @@
-name: CI
+name: CI (Julia nightly)
 on:
   pull_request:
     branches:
@@ -11,7 +11,7 @@ defaults:
   run:
     shell: bash
 jobs:
-  test:
+  test-julia-nightly:
     name: Julia ${{ matrix.version }}/${{ matrix.os }}/${{ matrix.arch }}/${{ matrix.threads }} threads/${{ github.event_name }}
     runs-on: ${{ matrix.os }}
     strategy:
@@ -28,8 +28,7 @@ jobs:
           - '1'
           - '2'
         version:
-          - '1.5'
-          - '1' # automatically expands to the latest stable 1.x release of Julia
+          - 'nightly'
         exclude:
           - os: macOS-latest
             arch: x86 # 32-bit Julia binaries are not available on macOS
