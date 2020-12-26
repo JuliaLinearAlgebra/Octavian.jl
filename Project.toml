@@ -1,10 +1,16 @@
 name = "Augustus"
 uuid = "6fd5a793-0b7e-452c-907f-f8bfe9c57db4"
 authors = ["Mason Protter", "Chris Elrod", "Dilum Aluthge", "contributors"]
-version = "0.1.0"
+version = "0.1.0-DEV"
+
+[deps]
+LoopVectorization = "bdcacae8-1622-11e9-2a5c-532679323890"
+VectorizationBase = "3d5dd08c-fd9d-11e8-17fa-ed2836048c2f"
 
 [compat]
 BenchmarkTools = "0.5"
+LoopVectorization = "0.9.12"
+VectorizationBase = "0.14.9"
 julia = "1.5"
 
 [extras]

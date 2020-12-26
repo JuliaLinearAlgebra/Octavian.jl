@@ -5,16 +5,16 @@
 
 macro _spawn(ex)
     if Threads.nthreads() > 1
-        esc(Expr(:macrocall, Expr(:(.), :Threads, QuoteNode(Symbol("@spawn"))), __source__, ex))
+        return esc(Expr(:macrocall, Expr(:(.), :Threads, QuoteNode(Symbol("@spawn"))), __source__, ex))
     else
-        esc(ex)
+        return esc(ex)
     end
 end
 
 macro _sync(ex)
     if Threads.nthreads() > 1
-        esc(Expr(:macrocall, Symbol("@sync"), __source__, ex))
+        return esc(Expr(:macrocall, Symbol("@sync"), __source__, ex))
     else
-        esc(ex)
+        return esc(ex)
     end
 end
