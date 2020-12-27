@@ -12,3 +12,4 @@ versioninfo()
 @info("Running tests with $(Threads.nthreads()) threads")
 
 include("macros.jl")
+include("matmul.jl")
