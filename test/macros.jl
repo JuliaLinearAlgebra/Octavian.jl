@@ -1,6 +1,6 @@
 @testset "Macros" begin
-    a = Augustus.@_sync begin
-        Augustus.@_spawn begin
+    a = Octavian.@_sync begin
+        Octavian.@_spawn begin
             1 + 1
         end
     end

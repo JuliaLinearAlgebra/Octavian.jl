@@ -1,4 +1,4 @@
-module Augustus
+module Octavian
 
 import LoopVectorization
 import VectorizationBase
@@ -6,4 +6,4 @@ import VectorizationBase
 include("types.jl")
 include("macros.jl")
 
-end # module Augustus
+end # module Octavian
