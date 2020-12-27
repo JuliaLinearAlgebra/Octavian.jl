@@ -1,5 +1,5 @@
 ```@meta
-CurrentModule = Augustus
+CurrentModule = Octavian
 ```
 
 # API
@@ -8,5 +8,5 @@ CurrentModule = Augustus
 ```
 
 ```@autodocs
-Modules = [Augustus]
+Modules = [Octavian]
 ```

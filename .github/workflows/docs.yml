@@ -44,5 +44,5 @@ jobs:
       - run: |
           julia --project=docs -e '
             using Documenter: doctest
-            using Augustus
-            doctest(Augustus)'
+            using Octavian
+            doctest(Octavian)'
