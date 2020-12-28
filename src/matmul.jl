@@ -1,6 +1,6 @@
 
 evenly_divide(x, y) = cld(x, cld(x, y))
-evenly_divide(x, y, z) = (evenly_divide(x, y) ÷ z) * z
+evenly_divide(x, y, z) = cld(evenly_divide(x, y), z) * z
 
 function matmul!(C::AbstractMatrix{T}, A::AbstractMatrix{T}, B::AbstractMatrix{T}, _α = one(T), _β = zero(T)) where {T}
     _Mc, _Kc, _Nc = block_sizes(T)
@@ -15,7 +15,7 @@ function matmul!(C::AbstractMatrix{T}, A::AbstractMatrix{T}, B::AbstractMatrix{T
     end
 
     # check if we want to skip packing B
-    do_not_pack_B = B isa DenseArray && (K * N ≤ _Kc * _Nc)
+    do_not_pack_B = (B isa DenseArray && (K * N ≤ _Kc * _Nc)) || N ≤ LoopVectorization.nᵣ
     # Create L2-buffer for `A`; it should be stack-allocated
     Amem = L2Buffer(T)
     Aptr = Base.unsafe_convert(Ptr{T}, Amem);
