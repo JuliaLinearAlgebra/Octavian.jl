@@ -26,3 +26,7 @@ function unsafe_copyto_avx!(B, A)
     end
 end
 
+@inline function gesp1(sp::P, inds) where {P <: VectorizationBase.AbstractStridedPointer}
+    P(VectorizationBase.gep(sp, inds), sp.strd, sp.offsets)
+end
+
