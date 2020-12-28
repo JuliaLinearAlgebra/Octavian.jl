@@ -11,4 +11,8 @@ versioninfo()
 
 @info("Running tests with $(Threads.nthreads()) threads")
 
-include("macros.jl")
+@testset "Octavian" begin
+    include("macros.jl")
+    include("matmul.jl")
+end
+
