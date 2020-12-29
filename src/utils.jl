@@ -1,4 +1,3 @@
-
 check_sizes(::StaticInt{M}, ::StaticInt{M}) where {M} = StaticInt{M}()
 check_sizes(::StaticInt{M}, ::StaticInt{N}) where {M,N} = throw("$M ≠ $N")
 check_sizes(::StaticInt{M}, m) where {M} = (@assert M == m; StaticInt{M}())
@@ -19,7 +18,6 @@ function matmul_sizes(C, A, B)
     M, K, N
 end
 
-
 function unsafe_copyto_avx!(B, A)
     LoopVectorization.@avx for i ∈ eachindex(B, A)
         B[i] = A[i]
@@ -29,4 +27,3 @@ end
 # @inline function gesp1(sp::P, inds) where {P <: VectorizationBase.AbstractStridedPointer}
 #     P(VectorizationBase.gep(sp, inds), sp.strd, sp.offsets)
 # end
-

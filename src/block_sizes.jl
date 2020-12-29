@@ -1,4 +1,3 @@
-
 """
   block_sizes(::Type{T}) -> (Mc, Kc, Nc)
 
@@ -48,7 +47,7 @@ function block_sizes(::Type{T}) where {T}
     L1c, L2c, L3c, L4c = VectorizationBase.CACHE_COUNT
     # TODO: something better than treating it as 4 MiB if there is no L3 cache
     #       one possibility is to focus on the L1 and L2 caches instead of the L2 and L3.
-    _L3 = something(__L3, 4194304) 
+    _L3 = something(__L3, 4194304)
     @assert L1c == L2c == VectorizationBase.NUM_CORES
 
     st = VectorizationBase.static_sizeof(T)
@@ -68,7 +67,5 @@ function block_sizes(::Type{T}) where {T}
     Kc = (StaticInt{5}() * L2) ÷ (StaticInt{7}() * Mc)
     Nc = ((StaticInt{5}() * L3) ÷ (StaticInt{7}() * Kc * Nr)) * Nr
 
-    Mc, Kc, Nc                                  
+    Mc, Kc, Nc
 end
-
-

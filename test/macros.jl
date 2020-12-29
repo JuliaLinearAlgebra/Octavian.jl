@@ -1,4 +1,4 @@
-@testset "Macros" begin
+@time @testset "Macros" begin
     a = Octavian.@_sync begin
         Octavian.@_spawn begin
             1 + 1

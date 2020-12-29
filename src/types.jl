@@ -1,8 +1,8 @@
-
 struct PointerMatrix{T,P<:VectorizationBase.AbstractStridedPointer,S<:Tuple{Vararg{Integer,2}}} <: DenseMatrix{T}
     p::P
     s::S
 end
+
 PointerMatrix(p::P, s::S) where {T,P<:VectorizationBase.AbstractStridedPointer{T},S} = PointerMatrix{T,P,S}(p, s)
 Base.size(A::PointerMatrix) = map(Int, A.s)
 VectorizationBase.stridedpointer(A::PointerMatrix) = A.p
@@ -30,7 +30,7 @@ function PointerMatrix(Bptr::Ptr{T}, (M,N), padcols::Bool = false) where {T}
     st = VectorizationBase.static_sizeof(T)
     _M = padcols ? VectorizationBase.align(M, T) : M
     # Should maybe add a more convenient column major constructor
-    Bsptr = VectorizationBase.stridedpointer( 
+    Bsptr = VectorizationBase.stridedpointer(
         Bptr, VectorizationBase.ArrayInterface.Contiguous{1}(), VectorizationBase.ArrayInterface.ContiguousBatch{0}(),
         VectorizationBase.ArrayInterface.StrideRank{(1,2)}(), (st, _M*st), (StaticInt{1}(),StaticInt{1}())
     )
@@ -42,12 +42,9 @@ mutable struct MemoryBuffer{L,T}
     data::NTuple{L,T}
     MemoryBuffer{L,T}(::UndefInitializer) where {L,T} = new{L,T}()
 end
+
 Base.unsafe_convert(::Type{Ptr{T}}, m::MemoryBuffer) where {T} = Base.unsafe_convert(Ptr{T}, Base.pointer_from_objref(m))
 @inline MemoryBuffer(::StaticInt{L}, ::Type{T}) where {L,T} = MemoryBuffer{L,T}(undef)
 @inline function L2Buffer(::Type{T}) where {T}
     MemoryBuffer(StaticInt{VectorizationBase.CACHE_SIZE[2]}() ÷ VectorizationBase.static_sizeof(T), T)
 end
-
-
-
-

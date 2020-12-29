@@ -1,4 +1,3 @@
-
 evenly_divide(x, y) = cld(x, cld(x, y))
 evenly_divide(x, y, z) = cld(evenly_divide(x, y), z) * z
 
@@ -19,13 +18,13 @@ function matmul!(C::AbstractMatrix{T}, A::AbstractMatrix{T}, B::AbstractMatrix{T
     # Create L2-buffer for `A`; it should be stack-allocated
     Amem = L2Buffer(T)
     Aptr = Base.unsafe_convert(Ptr{T}, Amem);
-    
+
     Bptr = Base.unsafe_convert(Ptr{T}, BCACHE);
 
     Mc = evenly_divide(M, _Mc, VectorizationBase.pick_vector_width_val(T) * StaticInt{LoopVectorization.mᵣ}())
     Kc = evenly_divide(M, _Kc)
     Nc = evenly_divide(M, _Nc, StaticInt{LoopVectorization.nᵣ}())
-    
+
     GC.@preserve Amem begin
         α = T(_α);
         for n ∈ StaticInt{1}():Nc:N # loop 5
@@ -58,7 +57,7 @@ function matmul_loop3!(C, Aptr, A, Bblock, α, β, ksize, nsize, M, k, n, Mc)
         msize = min(Int(m + Mc), Int(M + 1)) - m
         Ablock = PointerMatrix(Aptr, (msize, ksize), true)
         unsafe_copyto_avx!(Ablock, view(A, m:m+msize-1, k:k+ksize-1))
-        
+
         Cblock = view(C, m:m+msize-1, n:n+nsize-1)
         macrokernel!(Cblock, Ablock, Bblock, α, β)
     end
@@ -69,5 +68,3 @@ function matmul(A::AbstractMatrix{Ta}, B::AbstractMatrix{Tb}) where {Ta, Tb}
     C = Matrix{promote_type(Ta, Tb)}(undef, size(A,1), size(B,2))
     matmul!(C, A, B)
 end
-
-

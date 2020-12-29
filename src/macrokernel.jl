@@ -1,4 +1,3 @@
-
 """
 The macrokernel. It iterates over our tiles, and applies the microkernel.
 """
@@ -23,4 +22,3 @@ function macrokernel!(C, A, B, α, ::StaticInt{0})
         C[m,n] = (α * Cmn)
     end
 end
-
