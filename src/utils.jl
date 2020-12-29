@@ -1,5 +1,5 @@
 check_sizes(::StaticInt{M}, ::StaticInt{M}) where {M} = StaticInt{M}()
-check_sizes(::StaticInt{M}, ::StaticInt{N}) where {M,N} = throw("$M ≠ $N")
+check_sizes(::StaticInt{M}, ::StaticInt{N}) where {M,N} = throw(ErrorException("$M ≠ $N"))
 check_sizes(::StaticInt{M}, m) where {M} = (@assert M == m; StaticInt{M}())
 check_sizes(m, ::StaticInt{M}) where {M} = (@assert M == m; StaticInt{M}())
 check_sizes(m, n) = (@assert m == n; m)
