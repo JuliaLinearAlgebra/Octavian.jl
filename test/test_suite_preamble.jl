@@ -11,9 +11,3 @@ end
 const coverage = is_coverage()
 
 @info("Code coverage is $(coverage ? "enabled" : "disabled")")
-
-const run_all_tests = get(ENV, "RUN_ALL_TESTS", "false") == "true"
-
-if run_all_tests
-    @info("RUN_ALL_TESTS is $(run_all_tests)")
-end

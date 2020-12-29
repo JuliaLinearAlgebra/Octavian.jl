@@ -12,8 +12,10 @@ include("macros.jl")
 include("types.jl")
 
 include("block_sizes.jl")
-include("macrokernel.jl")
+include("macrokernels.jl")
 include("matmul.jl")
+include("memory_buffer.jl")
+include("pointer_matrix.jl")
 include("utils.jl")
 
 const BCACHE = UInt8[]
