@@ -2,17 +2,19 @@ import Octavian
 
 import BenchmarkTools
 import InteractiveUtils
+import LinearAlgebra
 import Test
 
-using InteractiveUtils: versioninfo
 using Test: @test, @testset
 
-versioninfo()
+include("test-suite-preamble.jl")
 
-@info("Running tests with $(Threads.nthreads()) threads")
+include("macros.jl")
 
-@testset "Octavian" begin
-    include("macros.jl")
-    include("matmul.jl")
+if (run_all_tests) || (coverage)
+    include("matmul-coverage.jl")
 end
 
+if (run_all_tests) || (!coverage)
+    include("matmul.jl")
+end
