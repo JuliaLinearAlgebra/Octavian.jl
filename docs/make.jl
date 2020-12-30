@@ -13,7 +13,8 @@ makedocs(;
     ),
     pages=[
         "Home" => "index.md",
-        "API" => "api.md",
+        "Public API" => "public-api.md",
+        "Internals (Private)" => "internals.md",
     ],
     strict=true,
 )

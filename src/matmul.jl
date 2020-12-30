@@ -1,6 +1,9 @@
 evenly_divide(x, y) = cld(x, cld(x, y))
 evenly_divide(x, y, z) = cld(evenly_divide(x, y), z) * z
 
+"""
+    matmul!(C::AbstractMatrix{T}, A::AbstractMatrix{T}, B::AbstractMatrix{T}, _α = one(T), _β = zero(T)) where {T}
+"""
 function matmul!(C::AbstractMatrix{T}, A::AbstractMatrix{T}, B::AbstractMatrix{T}, _α = one(T), _β = zero(T)) where {T}
     _Mc, _Kc, _Nc = block_sizes(T)
 
@@ -63,6 +66,9 @@ function matmul_loop3!(C, Aptr, A, Bblock, α, β, ksize, nsize, M, k, n, Mc)
     end
 end
 
+"""
+    matmul(A::AbstractMatrix{Ta}, B::AbstractMatrix{Tb}) where {Ta, Tb}
+"""
 function matmul(A::AbstractMatrix{Ta}, B::AbstractMatrix{Tb}) where {Ta, Tb}
     # TODO: use `similar` / make it more generic; ideally should work with `StaticArrays.MArray`
     C = Matrix{promote_type(Ta, Tb)}(undef, size(A,1), size(B,2))
