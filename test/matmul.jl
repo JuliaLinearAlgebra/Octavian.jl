@@ -66,13 +66,13 @@ end
 
 @time @testset "Matrix Multiply Int64" begin
     Mc, Kc, Nc = map(Int, Octavian.block_sizes(Int64))
-    for logn ∈ range(log(1), log(2Nc+1), length = 7)
+    for logn ∈ range(log(1), log(1.5Nc+1), length = 7)
         n = round(Int, exp(logn))
-        for logk ∈ range(log(1), log(2Kc+1), length = 7)
+        for logk ∈ range(log(1), log(1.5Kc+1), length = 7)
             k = round(Int, exp(logk))
             B = rand(Int64, k, n)
             B′ = permutedims(B)'
-            for logm ∈ range(log(1), log(2c+1), length = 7)
+            for logm ∈ range(log(1), log(1.5Mc+1), length = 7)
                 m = round(Int, exp(logm))
                 A = rand(Int64, m, k)
                 A′ = permutedims(A)'
