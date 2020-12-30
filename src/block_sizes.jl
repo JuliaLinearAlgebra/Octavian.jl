@@ -53,7 +53,7 @@ function block_sizes(::Type{T}) where {T}
     st = VectorizationBase.static_sizeof(T)
 
     L2 = (StaticInt{_L2}() - StaticInt{_L1}()) ÷ st
-    L3 = _calculate_L3(StaticInt{_L2}(), StaticInt{_L3}(), st, VectorizationBase.CACHE_INCLUSIVITY[3])
+    L3 = _calculate_L3(StaticInt{_L2}(), StaticInt{_L3}(), st, Val{VectorizationBase.CACHE_INCLUSIVITY[3]}())
 
     W = VectorizationBase.pick_vector_width_val(T)
     Mr = StaticInt{LoopVectorization.mᵣ}()
@@ -66,10 +66,6 @@ function block_sizes(::Type{T}) where {T}
     Mc, Kc, Nc
 end
 
-@inline function _calculate_L3(_L2, _L3, st, cache_inclusivity_3::Bool)
-    if cache_inclusivity_3
-        return (_L3 - _L2) ÷ st
-    else
-        return _L3 ÷ st
-    end
-end
+_calculate_L3(_L2, _L3, st, ::Val{true}) = (_L3 - _L2) ÷ st
+_calculate_L3(_L2, _L3, st, ::Val{false}) = _L3 ÷ st
+
