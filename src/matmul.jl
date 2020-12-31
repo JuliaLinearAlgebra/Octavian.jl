@@ -56,7 +56,7 @@ function matmul!(C::AbstractMatrix{T}, A::AbstractMatrix{T}, B::AbstractMatrix{T
 end
 
 function matmul_loop3!(C, Aptr, A, Bblock, α, β, ksize, nsize, M, k, n, Mc)
-    for m ∈ StaticInt{1}():Mc:M
+    @sync Threads.@threads for m ∈ StaticInt{1}():Mc:M
         msize = min(Int(m + Mc), Int(M + 1)) - m
         Ablock = PointerMatrix(Aptr, (msize, ksize), true)
         unsafe_copyto_avx!(Ablock, view(A, m:m+msize-1, k:k+ksize-1))
