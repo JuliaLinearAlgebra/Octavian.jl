@@ -27,6 +27,7 @@ jobs:
         threads:
           - '1'
           - '2'
+          - '16'
         version:
           - 'nightly'
         exclude:
