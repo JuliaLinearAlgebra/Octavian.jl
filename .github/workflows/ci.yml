@@ -27,6 +27,7 @@ jobs:
         threads:
           - '1'
           - '2'
+          - '16'
         version:
           - '1.5'
           - '1' # automatically expands to the latest stable 1.x release of Julia
