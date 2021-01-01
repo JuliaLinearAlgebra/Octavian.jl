@@ -8,6 +8,7 @@ using VectorizationBase: StaticInt
 export matmul
 export matmul!
 
+include("global_constants.jl")
 include("macros.jl")
 include("types.jl")
 
@@ -18,10 +19,6 @@ include("memory_buffer.jl")
 include("pointer_matrix.jl")
 include("utils.jl")
 
-const BCACHE = UInt8[]
-
-function __init__()
-    resize!(BCACHE, VectorizationBase.CACHE_SIZE[3] * VectorizationBase.CACHE_COUNT[3]);
-end
+include("init.jl") # `Octavian.__init__()` is defined in this file
 
 end # module Octavian
