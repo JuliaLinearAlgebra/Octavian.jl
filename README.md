@@ -20,4 +20,6 @@
 
 Standing on the shoulders of [Gaius](https://github.com/MasonProtter/Gaius.jl).
 
+This package is still experimental.
+
 Please see the [documentation](https://JuliaLinearAlgebra.github.io/Octavian.jl/stable).
