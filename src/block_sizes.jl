@@ -68,4 +68,3 @@ end
 
 _calculate_L3(_L2, _L3, st, ::Val{true}) = (_L3 - _L2) ÷ st
 _calculate_L3(_L2, _L3, st, ::Val{false}) = _L3 ÷ st
-
