@@ -4,6 +4,7 @@ import BenchmarkTools
 import InteractiveUtils
 import LinearAlgebra
 import LoopVectorization
+import Random
 import Test
 import VectorizationBase
 
@@ -15,6 +16,8 @@ using Test: @testset, @test, @test_throws
 include("test_suite_preamble.jl")
 
 @info("Running Octavian tests with $(Octavian.OCTAVIAN_NUM_TASKS[]) tasks")
+
+Random.seed!(123)
 
 include("block_sizes.jl")
 include("init.jl")
