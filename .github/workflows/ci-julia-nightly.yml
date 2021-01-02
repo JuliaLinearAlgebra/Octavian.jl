@@ -11,7 +11,7 @@ defaults:
   run:
     shell: bash
 jobs:
-  test-nightly:
+  test-julia-nightly:
     name: Julia ${{ matrix.version }}/${{ matrix.threads }} threads/${{ matrix.os }}/${{ matrix.arch }}/${{ github.event_name }}
     runs-on: ${{ matrix.os }}
     strategy:
