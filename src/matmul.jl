@@ -53,8 +53,8 @@ end
 function matmul_loop3!(C, ::Type{T}, A, Bblock, α, β, ksize, nsize, M, k, n, Mc) where {T}
     full_range = StaticInt{1}():Mc:M
     partitions = Iterators.partition(full_range, OCTAVIAN_NUM_TASKS[])
-    @_sync for partition ∈ partitions
-        @_spawn begin
+    @sync for partition ∈ partitions
+        Threads.@spawn begin
             # Create L2-buffer for `A`; it should be stack-allocated
             Amem = L2Buffer(T)
             Aptr = Base.unsafe_convert(Ptr{T}, Amem);

@@ -9,7 +9,6 @@ export matmul
 export matmul!
 
 include("global_constants.jl")
-include("macros.jl")
 include("types.jl")
 
 include("block_sizes.jl")
