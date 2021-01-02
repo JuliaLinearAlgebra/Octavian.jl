@@ -12,7 +12,7 @@ defaults:
     shell: bash
 jobs:
   test:
-    name: Julia ${{ matrix.version }}/${{ matrix.os }}/${{ matrix.arch }}/${{ matrix.threads }} threads/${{ github.event_name }}
+    name: Julia ${{ matrix.version }}/${{ matrix.threads }} threads/${{ matrix.os }}/${{ matrix.arch }}/${{ github.event_name }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -56,8 +56,8 @@ jobs:
           coverage: false
         env:
           JULIA_NUM_THREADS: ${{ matrix.threads }}
-  test-code-coverage:
-    name: Julia ${{ matrix.version }}/${{ matrix.os }}/${{ matrix.arch }}/${{ matrix.threads }} threads/${{ github.event_name }}
+  coverage:
+    name: coverage=true/Julia ${{ matrix.version }}/${{ matrix.threads }} threads/${{ matrix.os }}/${{ matrix.arch }}/${{ github.event_name }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
