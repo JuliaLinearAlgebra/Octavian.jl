@@ -6,8 +6,8 @@ import VectorizationBase
 
 using VectorizationBase: StaticInt
 
-export matmul
-export matmul!
+# export matmul
+# export matmul!
 
 include("global_constants.jl")
 include("types.jl")
