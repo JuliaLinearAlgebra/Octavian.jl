@@ -1,5 +1,6 @@
 module Octavian
 
+import ArrayInterface
 import LoopVectorization
 import VectorizationBase
 

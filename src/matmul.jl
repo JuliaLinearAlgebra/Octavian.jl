@@ -1,6 +1,12 @@
 evenly_divide(x, y) = cld(x, cld(x, y))
 evenly_divide(x, y, z) = cld(evenly_divide(x, y), z) * z
 
+_dim1contig(::ArrayInterface.Contiguous) = false
+_dim1contig(::ArrayInterface.Contiguous{1}) = true
+dim1contig(::Type{A}) where {A <: StridedArray} = _dim1contig(ArrayInterface.contiguous_axis(A))
+dim1contig(::Type) = false
+dim1contig(A) = dim1contig(typeof(A))
+
 """
     matmul!(C::AbstractMatrix, A::AbstractMatrix, B::AbstractMatrix, _α = 1, _β = 0)
 """
@@ -10,7 +16,7 @@ function matmul!(C::AbstractMatrix{T}, A::AbstractMatrix{T}, B::AbstractMatrix{T
     M, K, N = matmul_sizes(C, A, B)
 
     # Check if maybe it's better not to pack at all.
-    if M * K ≤ _Mc * _Kc && A isa DenseArray && C isa StridedArray && B isa StridedArray && #
+    if M * K ≤ _Mc * _Kc && dim1contig(A) && LoopVectorization.check_args(C, A, B) &&
         (stride(A,2) ≤ 72 || (iszero(stride(A,2) & (VectorizationBase.pick_vector_width(eltype(A))-1)) && iszero(reinterpret(Int,pointer(A)) & 63)))
         macrokernel!(C, A, B, _α, _β)
         return C
