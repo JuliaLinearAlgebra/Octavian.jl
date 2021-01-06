@@ -22,12 +22,11 @@ jobs:
           - x86
         os:
           - ubuntu-latest
-          # - windows-latest
+          # - windows-latest # TODO: uncomment this line
           - macOS-latest
         threads:
           - '1'
-          - '2'
-          # - '64'
+          - '3' # GitHub runners have 2 cores, so `NUM_CORES+1` is 3
         version:
           - '1.5'
           - '1' # automatically expands to the latest stable 1.x release of Julia
@@ -68,7 +67,7 @@ jobs:
           - ubuntu-latest
         threads:
           - '1'
-          - '2'
+          - '3' # GitHub runners have 2 cores, so `NUM_CORES+1` is 3
         version:
           - '1' # automatically expands to the latest stable 1.x release of Julia
     steps:
