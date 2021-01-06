@@ -31,3 +31,8 @@ C = Octavian.matmul(A, B)  # (multi-threaded) multiply A×B and return the resul
 
 C == A * B
 ```
+
+Remember to start Julia with multiple threads with e.g. one of the following:
+- `julia -t auto`
+- `julia -t 4`
+- Set the `JULIA_NUM_THREADS` environment variable to `4` **before** starting Julia
