@@ -4,9 +4,12 @@ CurrentModule = Octavian
 
 # Octavian
 
-Octavian.jl is a multi-threaded BLAS-like library that provides pure Julia matrix multiplication.
+Octavian.jl is a multi-threaded BLAS-like library that provides pure Julia
+matrix multiplication, built on top of
+[LoopVectorization.jl](https://github.com/chriselrod/LoopVectorization.jl).
 
-The source code for Octavian is available in the [GitHub repository](https://github.com/JuliaLinearAlgebra/Octavian.jl).
+The source code for Octavian is available in the
+[GitHub repository](https://github.com/JuliaLinearAlgebra/Octavian.jl).
 
 You may also be interested in:
 - [Tullio.jl](https://github.com/mcabbott/Tullio.jl)
