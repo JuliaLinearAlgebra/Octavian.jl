@@ -6,6 +6,11 @@ CurrentModule = Octavian
 
 ## Multi-threaded matrix multiplication: `matmul!` and `matmul`
 
+Remember to start Julia with multiple threads with e.g. one of the following:
+- `julia -t auto`
+- `julia -t 4`
+- Set the `JULIA_NUM_THREADS` environment variable to `4` **before** starting Julia
+
 ```@repl
 using Octavian
 
