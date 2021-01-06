@@ -18,8 +18,11 @@
 [ci-julia-nightly-img]: https://github.com/JuliaLinearAlgebra/Octavian.jl/workflows/CI%20(Julia%20nightly)/badge.svg "Continuous Integration (Julia nightly)"
 [codecov-img]:          https://codecov.io/gh/JuliaLinearAlgebra/Octavian.jl/branch/master/graph/badge.svg           "Code Coverage"
 
-Standing on the shoulders of [Gaius](https://github.com/MasonProtter/Gaius.jl).
+Octavian.jl is a multi-threaded BLAS-like library that provides pure Julia matrix multiplication.
 
-This package is still experimental.
+Please see the [Octavian documentation](https://JuliaLinearAlgebra.github.io/Octavian.jl/stable).
 
-Please see the [documentation](https://JuliaLinearAlgebra.github.io/Octavian.jl/stable).
+You may also be interested in:
+- [Tullio.jl](https://github.com/mcabbott/Tullio.jl)
+- [Gaius.jl](https://github.com/MasonProtter/Gaius.jl)
+- [PaddedMatrices.jl](https://github.com/chriselrod/PaddedMatrices.jl)
