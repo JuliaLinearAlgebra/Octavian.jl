@@ -19,7 +19,7 @@ end
         packaloopmul!(C, A, B, α, β, M, K, N)
         return
     else
-        jmulpackAonly!(C, A, B, α, β, M, K, N, StaticFloat{W₁Default}(), StaticFloat{W₂Default}(), StaticFloat{R₁Default}(), StaticFloat{R₂Default}())
+        matmul_st_only_pack_A!(C, A, B, α, β, M, K, N, StaticFloat{W₁Default}(), StaticFloat{W₂Default}(), StaticFloat{R₁Default}(), StaticFloat{R₂Default}())
         return
     end
 end

@@ -227,10 +227,9 @@ end
 end
 @inline function alloc_a_pack(A, M, ::Type{T}) where {T}
     buffer = core_cache_buffer(T, Val(2))
-    Apack = default_zerobased_stridedpointer(align(pointer(buffer)), (static_sizeof(T), static_sizeof(T) * align(M, T)))
+    Apack = default_zerobased_stridedpointer(align(pointer(buffer)), (One(), align(M, T)))
     Apack, buffer
 end
-
 @inline function packaloopmul!(
     C::AbstractStridedPointer{T},
     A::AbstractStridedPointer,

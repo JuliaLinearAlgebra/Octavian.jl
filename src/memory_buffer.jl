@@ -43,3 +43,36 @@ end
     MemoryBuffer{T}(undef, L)
 end
 
+
+BCache(i::Integer) = BCache(pointer(BCACHE)+cld_fast(SECOND_CACHE_SIZE*i,Threads.nthreads()), i % UInt)
+BCache(::Nothing) = BCache(pointer(BCACHE), nothing)
+
+@inline Base.pointer(b::BCache) = b.p
+@inline Base.unsafe_convert(::Type{Ptr{T}}, b::BCache) where {T} = Base.unsafe_convert(Ptr{T}, b.p)
+
+function _use_bcache()
+    while Threads.atomic_cas!(BCACHE_LOCK, zero(UInt), typemax(UInt)) != zero(UInt)
+        pause()
+    end
+    return BCache(nothing)
+end
+@inline _free_bcache!(b::BCache{Nothing}) = reseet_bcache_lock!()
+
+_use_bcache(::Nothing) = _use_bcache()
+function _use_bcache(i)
+    f = one(UInt) << i
+    while (Threads.atomic_or!(BCACHE_LOCK, f) & f) != zero(UInt)
+        pause()
+    end
+    BCache(i)
+end
+_free_bcache!(b::BCache{UInt}) = (Threads.atomic_xor!(BCACHE_LOCK, one(UInt) << b.i); nothing)
+
+"""
+  reset_bcache_lock!()
+
+Currently not using try/finally in matmul routine, despite locking.
+So if it errors for some reason, you may need to manually call `reset_bcache_lock!()`.
+"""
+@inline reseet_bcache_lock!() = (BCACHE_LOCK[] = zero(UInt); nothing)
+

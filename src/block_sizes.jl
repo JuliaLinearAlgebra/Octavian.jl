@@ -1,11 +1,3 @@
-const FIRST__CACHE = 1 + (VectorizationBase.CACHE_SIZE[3] !== nothing)
-const SECOND_CACHE = 2 + (VectorizationBase.CACHE_SIZE[3] !== nothing)
-const FIRST__CACHE_SIZE = VectorizationBase.CACHE_SIZE[FIRST__CACHE] === nothing ? 262144 :
-    (((FIRST__CACHE == 2) & CACHE_INCLUSIVITY[2]) ? (VectorizationBase.CACHE_SIZE[2] - VectorizationBase.CACHE_SIZE[1]) :
-    VectorizationBase.CACHE_SIZE[FIRST__CACHE])
-const SECOND_CACHE_SIZE = (VectorizationBase.CACHE_SIZE[SECOND_CACHE] === nothing ? 3145728 :
-    (CACHE_INCLUSIVITY[SECOND_CACHE] ? (VectorizationBase.CACHE_SIZE[SECOND_CACHE] - VectorizationBase.CACHE_SIZE[FIRST__CACHE]) :
-    VectorizationBase.CACHE_SIZE[SECOND_CACHE])) * something(VectorizationBase.CACHE_COUNT[SECOND_CACHE], 1)
 
 first_effective_cache(::Type{T}) where {T} = StaticInt{FIRST__CACHE_SIZE}() ÷ static_sizeof(T)
 second_effective_cache(::Type{T}) where {T} = StaticInt{SECOND_CACHE_SIZE}() ÷ static_sizeof(T)

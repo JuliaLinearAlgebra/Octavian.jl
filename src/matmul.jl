@@ -44,10 +44,9 @@ function matmul_st_pack_A_and_B!(
             let A = A, B = B
                 for k ∈ CloseOpen(Kiter)
                     ksize = ifelse(k < Krem, Kblock_Krem, Kblock)
-                    Bsubset2 = PtrArray(B, (ksize, nsize), none_dense(Val{2}()))
-                    Bpacked2 = ptrarray0(L3ptr, (ksize, nsize))
-                    copyto!(Bpacked2, Bsubset2)
-                    let A = A, C = C, B = zstridedpointer(Bpacked2)
+                    _B = default_zerobased_stridedpointer(L3ptr, (One(),ksize))
+                    unsafe_copyto_avx!(_B, B, ksize, nsize)
+                    let A = A, C = C, B = _B
                         for m in CloseOpen(Miter)
                             msize = ifelse((m+1) == Miter, Mremfinal, ifelse(m < Mrem, Mblock_Mrem, Mblock))
                             if k == 0
@@ -73,7 +72,9 @@ end
 
 @inline contiguousstride1(A) = ArrayInterface.contiguous_axis(A) === ArrayInterface.Contiguous{1}()
 @inline contiguousstride1(A::AbstractStridedPointer{T,N,1}) where {T,N} = true
-@inline firstbytestride(A::AbstractStridedPointer) = VectorizationBase.bytestrides(A)[One()]
+# @inline bytestride(A::AbstractArray, i) = VectorizationBase.bytestrides(A)[i]
+@inline bytestride(A::AbstractStridedPointer, i) = strides(A)[i]
+@inline firstbytestride(A::AbstractStridedPointer) = bytestride(A, One())
 
 @inline function vectormultiple(bytex, ::Type{Tc}, ::Type{Ta}) where {Tc,Ta}
     Wc = VectorizationBase.pick_vector_width_val(Tc) * static_sizeof(Ta) - One()
@@ -180,11 +181,9 @@ end
 
 Multiply matrices `A` and `B`.
 """
-@inline function matmul(A, B)
-    M = size(A, StaticInt{1}())
-    N = size(B, StaticInt{2}())
-    C = StrideArray{promote_type(eltype(A),eltype(B))}(undef, (M, N))
-    matmul!(C, A, B)
+@inline function matmul(A::AbstractMatrix, B::AbstractMatrix)
+    C, (M,K,N) = alloc_matmul_product(A, B)
+    _matmul!(C, A, B, One(), Zero(), nothing, (M,K,N))
     return C
 end
 
@@ -312,7 +311,7 @@ function __matmul!(
     #    if not, check if we want to thread `N` loop anyway
     #       if so, divide `M` first, then use ratio of desired divisions / divisions along `M` to calc divisions along `N`
     #       if not, only thread along `M`. These don't need syncing, as we're not packing `B`
-    #    if so, `jmultpackAB!`
+    #    if so, `matmul_pack_A_and_B!`
     #
     # MᵣW * (MᵣW_mul_factor - One()) # gives a smaller Mc, then
     # if 2M/nspawn is less than it, we don't don't `A`
@@ -325,7 +324,7 @@ function __matmul!(
     elseif (nspawn*W > M) || (contiguousstride1(B) ? (roundtostaticint(Kc * Nc * StaticFloat{R₂Default}()) ≥ K * N) : (firstbytestride(B) ≤ 1600))
     # elseif (contiguousstride1(B) ? (roundtostaticint(Kc * Nc * StaticFloat{R₂Default}()) ≥ K * N) : (firstbytestride(B) ≤ 1600))
         matmulsplitn!(C, A, B, α, β, Mc, M, K, N, nspawn, Val{true}())
-    else # TODO: Allow splitting along `N` for `jmultpackAB!`
+    else # TODO: Allow splitting along `N` for `matmul_pack_A_and_B!`
         matmul_pack_A_and_B!(C, A, B, α, β, M, K, N, nspawn, StaticFloat{W₁Default}(), StaticFloat{W₂Default}(), StaticFloat{R₁Default}(), StaticFloat{R₂Default}())
     end
     nothing
@@ -389,9 +388,10 @@ function sync_mul!(
     Npackb___block_rem, Npackb___block_ = promote(Npackb___div + One(), Npackb___div)
 
     pack_r_offset = Npackb_r_div * id + min(id, Npackb_r_rem)
-    pack_r_view = CloseOpen(pack_r_offset, pack_r_offset + ifelse(id < Npackb_r_rem, Npackb_r_block_rem, Npackb_r_block_))
     pack___offset = Npackb___div * id + min(id, Npackb___rem)
-    pack___view = CloseOpen(pack___offset, pack___offset + ifelse(id < Npackb___rem, Npackb___block_rem, Npackb___block_))
+    
+    pack_r_len = ifelse(id < Npackb_r_rem, Npackb_r_block_rem, Npackb_r_block_)
+    pack___len = ifelse(id < Npackb___rem, Npackb___block_rem, Npackb___block_)
 
     GC.@preserve BCACHE begin
         for n in CloseOpen(Niter)
@@ -399,14 +399,13 @@ function sync_mul!(
             # pack kc x nc block of B
             nfull = n < Nrem
             nsize = ifelse(nfull, Nblock_Nrem, Nblock)
-            pack_view = ifelse(nfull, pack_r_view, pack___view)
+            pack_offset = ifelse(nfull, pack_r_offset, pack___offset)
+            pack_len = ifelse(nfull, pack_r_len, pack___len)
             let A = A, B = B#, C = C
                 for k ∈ CloseOpen(Kiter)
                     ksize = ifelse(k < Krem, Kblock_Krem, Kblock)
-
-                    Bsubset2 = PtrArray(B, (ksize, nsize), none_dense(Val{2}()))
-                    Bpacked2 = ptrarray0(bc, (ksize, nsize))
-                    copyto!(zview(Bpacked2, :, pack_view), zview(Bsubset2, :, pack_view))
+                    _B = default_zerobased_stridedpointer(bc, (One(), ksize))
+                    unsafe_copyto_avx!(gesp(_B, (Zero(), pack_offset)), gesp(B, (Zero(), pack_offset)), ksize, pack_len)
                     # synchronize before starting the multiplication, to ensure `B` is packed
                     sync_iters += total_ids
                     _mv = _atomic_add!(atomicp, one(UInt))
@@ -415,7 +414,7 @@ function sync_mul!(
                         _mv = _atomic_max!(atomicp, zero(UInt))
                     end
                     # multiply
-                    let A = A, B = zstridedpointer(Bpacked2), C = C
+                    let A = A, B = _B, C = C
                         for m in CloseOpen(Miter)
                             msize = ifelse((m+1) == Miter, Mremfinal, ifelse(m < Mrem, Mblock_Mrem, Mblock))
                             if k == 0

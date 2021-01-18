@@ -18,7 +18,33 @@ end
 
 function unsafe_copyto_avx!(pB, pA, M, N)
     LoopVectorization.@avx for n ∈ CloseOpen(N), m ∈ CloseOpen(M)
-        pB[i] = pA[i]
+        pB[m,n] = pA[m,n]
     end
 end
+
+function default_stridedpointer_quote(::Type{T}, N, Ot) where {T}
+    C = 1
+    B = 0
+    R = Expr(:tuple)
+    o = Expr(:tuple)
+    xt = Expr(:tuple)
+    st = Expr(:call, Expr(:curly, :StaticInt, sizeof(T)))
+    for n ∈ 1:N
+        push!(xt.args, Expr(:call, :*, st, Expr(:ref, :x, n)))
+        push!(R.args, n)
+        push!(o.args, Expr(:call, Ot))
+    end
+    quote
+        $(Expr(:meta,:inline))
+        StridedPointer{$T,$N,$C,$B,$R}(ptr, $xt, $o)
+    end
+end
+
+@generated function default_stridedpointer(ptr::Ptr{T}, x::X) where {T, N, X <: Tuple{Vararg{Integer,N}}}
+    default_stridedpointer_quote(T, N, :One)
+end
+@generated function default_zerobased_stridedpointer(ptr::Ptr{T}, x::X) where {T, N, X <: Tuple{Vararg{Integer,N}}}
+    default_stridedpointer_quote(T, N, :Zero)
+end
+
 
