@@ -1,9 +1,14 @@
-struct PointerMatrix{T,P<:VectorizationBase.AbstractStridedPointer,S<:Tuple{Vararg{Integer,2}}} <: DenseMatrix{T}
-    p::P
-    s::S
+mutable struct MemoryBuffer{L,T} <: DenseVector{T}
+    data::NTuple{L,T}
+    @inline function MemoryBuffer{L,T}(::UndefInitializer) where {L,T}
+        @assert isbitstype(T) "Memory buffers must point to bits types, but `isbitstype($T) == false`."
+        new{L,T}()
+    end
 end
 
-mutable struct MemoryBuffer{L,T}
-    data::NTuple{L,T}
-    MemoryBuffer{L,T}(::UndefInitializer) where {L,T} = new{L,T}()
+struct StaticFloat{N} <: AbstractFloat
+    StaticFloat{N}() where {N} = new{N::Float64}()
 end
+
+
+
