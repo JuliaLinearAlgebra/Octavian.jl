@@ -148,7 +148,7 @@ Otherwise, based on the array's size, whether they are transposed, and whether t
     M, K, N = MKN === nothing ? matmul_sizes(C, A, B) : MKN
     pA = zstridedpointer(A); pB = zstridedpointer(B); pC = zstridedpointer(C);
     Cb = preserve_buffer(C); Ab = preserve_buffer(A); Bb = preserve_buffer(B);
-    Mc, Kc, Nc = matmul_params(T)
+    Mc, Kc, Nc = block_sizes(T)
     GC.@preserve Cb Ab Bb begin
         if maybeinline(M, N, T, ArrayInterface.is_column_major(A)) # check MUST be compile-time resolvable
             inlineloopmul!(pC, pA, pB, One(), Zero(), M, K, N)
@@ -164,7 +164,7 @@ Otherwise, based on the array's size, whether they are transposed, and whether t
 end # function
 
 function matmul_st_pack_dispatcher!(pC::AbstractStridedPointer{T}, pA, pB, α, β, M, K, N, notnested::Union{Nothing,Bool} = nothing) where {T}
-    Mc, Kc, Nc = matmul_params(T)
+    Mc, Kc, Nc = block_sizes(T)
     if VectorizationBase.CACHE_SIZE[3] === nothing || (contiguousstride1(pB) ? (Kc * Nc ≥ K * N) : (firstbytestride(pB) ≤ 1600))
         matmul_st_only_pack_A!(pC, pA, pB, α, β, M, K, N, StaticFloat{W₁Default}(), StaticFloat{W₂Default}(), StaticFloat{R₁Default}(), StaticFloat{R₂Default}())
     elseif notnested === nothing ? iszero(ccall(:jl_in_threaded_region, Cint, ())) : notnested
@@ -285,7 +285,7 @@ function __matmul!(
 ) where {T}
     Mᵣ = StaticInt{mᵣ}(); Nᵣ = StaticInt{nᵣ}();
     W = VectorizationBase.pick_vector_width_val(T)
-    Mc, Kc, Nc = matmul_params(T)
+    Mc, Kc, Nc = block_sizes(T)
     MᵣW = Mᵣ*W
 
     # Not taking the fast path

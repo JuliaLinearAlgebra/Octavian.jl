@@ -2,15 +2,15 @@
 first_effective_cache(::Type{T}) where {T} = StaticInt{FIRST__CACHE_SIZE}() ÷ static_sizeof(T)
 second_effective_cache(::Type{T}) where {T} = StaticInt{SECOND_CACHE_SIZE}() ÷ static_sizeof(T)
 
-function matmul_params(::Type{T}, _α, _β, R₁, R₂) where {T}
+function block_sizes(::Type{T}, _α, _β, R₁, R₂) where {T}
     W = VectorizationBase.pick_vector_width_val(T)
     α = _α * W
     β = _β * W
     L₁ₑ = first_effective_cache(T) * R₁
     L₂ₑ = second_effective_cache(T) * R₂
-    matmul_params(W, α, β, L₁ₑ, L₂ₑ)
+    block_sizes(W, α, β, L₁ₑ, L₂ₑ)
 end
-function matmul_params(W, α, β, L₁ₑ, L₂ₑ)
+function block_sizes(W, α, β, L₁ₑ, L₂ₑ)
     MᵣW = StaticInt{mᵣ}() * W
     
     Mc = floortostaticint(√(L₁ₑ)*√(L₁ₑ*β + L₂ₑ*α)/√(L₂ₑ) / MᵣW) * MᵣW
@@ -19,8 +19,8 @@ function matmul_params(W, α, β, L₁ₑ, L₂ₑ)
 
     Mc, Kc, Nc
 end
-function matmul_params(::Type{T}) where {T}
-    matmul_params(T, StaticFloat{W₁Default}(), StaticFloat{W₂Default}(), StaticFloat{R₁Default}(), StaticFloat{R₂Default}())
+function block_sizes(::Type{T}) where {T}
+    block_sizes(T, StaticFloat{W₁Default}(), StaticFloat{W₂Default}(), StaticFloat{R₁Default}(), StaticFloat{R₂Default}())
 end
 
 """
