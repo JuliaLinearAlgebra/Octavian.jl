@@ -10,7 +10,7 @@
     C2 = deepcopy(C1)
     α = Float64(2.0)
     β = Float64(2.0)
-    Octavian.macrokernel!(C1, A1, B1, α, β)
+    Octavian.loopmul!(VectorizationBase.zstridedpointer(C1), VectorizationBase.zstridedpointer(A1), VectorizationBase.zstridedpointer(B1), α, β, m, k, n)
     C2 = α*A2*B2 + β*C2
     @test C1 ≈ C2
 end

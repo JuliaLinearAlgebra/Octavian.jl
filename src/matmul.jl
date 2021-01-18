@@ -1,90 +1,448 @@
-evenly_divide(x, y) = cld(x, cld(x, y))
-evenly_divide(x, y, z) = cld(evenly_divide(x, y), z) * z
-
-_dim1contig(::ArrayInterface.Contiguous) = false
-_dim1contig(::ArrayInterface.Contiguous{1}) = true
-dim1contig(::Type{A}) where {A <: StridedArray} = _dim1contig(ArrayInterface.contiguous_axis(A))
-dim1contig(::Type) = false
-dim1contig(A) = dim1contig(typeof(A))
-
 """
-    matmul!(C::AbstractMatrix, A::AbstractMatrix, B::AbstractMatrix, _α = 1, _β = 0)
+Only packs `A`. Primitively does column-major packing: it packs blocks of `A` into a column-major temporary.
 """
-function matmul!(C::AbstractMatrix{T}, A::AbstractMatrix{T}, B::AbstractMatrix{T}, _α = one(T), _β = zero(T)) where {T}
-    _Mc, _Kc, _Nc = block_sizes(T)
+function matmul_st_only_pack_A!(
+    C::AbstractStridedPointer{T}, A::AbstractStridedPointer, B::AbstractStridedPointer,
+    α, β, M, K, N, ::StaticFloat{W₁}, ::StaticFloat{W₂}, ::StaticFloat{R₁}, ::StaticFloat{R₂}
+) where {T, W₁, W₂, R₁, R₂}
 
-    M, K, N = matmul_sizes(C, A, B)
+    ((Mblock, Mblock_Mrem, Mremfinal, Mrem, Miter), (Kblock, Kblock_Krem, Krem, Kiter)) =
+        solve_McKc(T, M, K, N, StaticFloat{W₁}(), StaticFloat{W₂}(), StaticFloat{R₁}(), StaticFloat{R₂}(), StaticInt{mᵣ}())
 
-    # Check if maybe it's better not to pack at all.
-    if M * K ≤ _Mc * _Kc && dim1contig(A) && LoopVectorization.check_args(C, A, B) &&
-        (stride(A,2) ≤ 72 || (iszero(stride(A,2) & (VectorizationBase.pick_vector_width(eltype(A))-1)) && iszero(reinterpret(Int,pointer(A)) & 63)))
-        macrokernel!(C, A, B, _α, _β)
-        return C
-    end
-
-    # check if we want to skip packing B
-    do_not_pack_B = (B isa DenseArray && (K * N ≤ _Kc * _Nc)) || N ≤ LoopVectorization.nᵣ
-
-    Bptr = Base.unsafe_convert(Ptr{T}, BCACHE);
-
-    Mc = evenly_divide(M, _Mc, VectorizationBase.pick_vector_width_val(T) * StaticInt{LoopVectorization.mᵣ}())
-    Kc = evenly_divide(M, _Kc)
-    Nc = evenly_divide(M, _Nc, StaticInt{LoopVectorization.nᵣ}())
-
-    α = T(_α);
-    for n ∈ StaticInt{1}():Nc:N # loop 5
-        nsize = min(Int(n + Nc), Int(N + 1)) - n
-        β = T(_β)
-        for k ∈ StaticInt{1}():Kc:K # loop 4
-            ksize = min(Int(k + Kc), Int(K + 1)) - k
-            Bview = view(B, k:k+ksize-1, n:n+nsize-1)
-            # seperate out loop 3, because of _Bblock type instability
-            if do_not_pack_B
-                # _Bblock is likely to have the same type as _Bblock; it'd be nice to reduce the amount of compilation
-                # by homogenizing types across branches, but for now I'm prefering the simplicity of using `Bview`
-                # _Bblock = PointerMatrix(gesp1(stridedpointer(B), (k,n)), ksize, nsize)
-                # matmul_loop3!(C, T, Ablock, A, _Bblock, α, β, msize, ksize, nsize, M, k, n, Mc)
-                matmul_loop3!(C, T, A, Bview, α, β, ksize, nsize, M, k, n, Mc)
-            else
-                Bblock = PointerMatrix(Bptr, (ksize,nsize))
-                unsafe_copyto_avx!(Bblock, Bview)
-                matmul_loop3!(C, T, A, Bblock, α, β, ksize, nsize, M, k, n, Mc)
+    for ko ∈ CloseOpen(Kiter)
+        ksize = ifelse(ko < Krem, Kblock_Krem, Kblock)
+        let A = A, C = C
+            for mo in CloseOpen(Miter)
+                msize = ifelse((mo+1) == Miter, Mremfinal, ifelse(mo < Mrem, Mblock_Mrem, Mblock))
+                if ko == 0
+                    packaloopmul!(C, A, B, α, β, msize, ksize, N)
+                else
+                    packaloopmul!(C, A, B, α, One(), msize, ksize, N)
+                end
+                A = gesp(A, (msize, Zero()))
+                C = gesp(C, (msize, Zero()))
             end
-            β = one(T) # re-writing to the same blocks of `C`, so replace original factor with `1`
-        end # loop 4
-    end # loop 5
-    C
+        end
+        A = gesp(A, (Zero(), ksize))
+        B = gesp(B, (ksize, Zero()))
+    end
+    nothing
 end
 
-function matmul_loop3!(C, ::Type{T}, A, Bblock, α, β, ksize, nsize, M, k, n, Mc) where {T}
-    full_range = StaticInt{1}():Mc:M
-    partitions = Iterators.partition(full_range, OCTAVIAN_NUM_TASKS[])
-    @sync for partition ∈ partitions
-        Threads.@spawn begin
-            # Create L2-buffer for `A`; it should be stack-allocated
-            Amem = L2Buffer(T)
-            Aptr = Base.unsafe_convert(Ptr{T}, Amem);
-            GC.@preserve Amem begin
-                for m ∈ partition # loop 3
-                    msize = min(Int(m + Mc), Int(M + 1)) - m
-                    Ablock = PointerMatrix(Aptr, (msize, ksize), true)
-                    unsafe_copyto_avx!(Ablock, view(A, m:m+msize-1, k:k+ksize-1))
+function matmul_st_pack_A_and_B!(
+    C::AbstractStridedPointer{T}, A::AbstractStridedPointer, B::AbstractStridedPointer, α, β, M, K, N, W₁, W₂, R₁, R₂, tid
+) where {T}
+    # TODO: if this is nested in other threaded code, use only a piece of BCACHE and make R₂ (and thus L₂ₑ) smaller
+    (Mblock, Mblock_Mrem, Mremfinal, Mrem, Miter), (Kblock, Kblock_Krem, Krem, Kiter), (Nblock, Nblock_Nrem, Nrem, Niter) =
+        solve_block_sizes(T, M, K, N, W₁, W₂, R₁, R₂, mᵣ)
 
-                    Cblock = view(C, m:m+msize-1, n:n+nsize-1)
-                    macrokernel!(Cblock, Ablock, Bblock, α, β)
-                end # loop 3
-            end # GC.@preserve
+    bcache = _use_bcache(tid)
+    L3ptr = Base.unsafe_convert(Ptr{T}, bcache)
+    GC.@preserve BCACHE begin
+        for n ∈ CloseOpen(Niter)
+            nsize = ifelse(n < Nrem, Nblock_Nrem, Nblock)
+            let A = A, B = B
+                for k ∈ CloseOpen(Kiter)
+                    ksize = ifelse(k < Krem, Kblock_Krem, Kblock)
+                    _B = default_zerobased_stridedpointer(L3ptr, (One(),ksize))
+                    unsafe_copyto_avx!(_B, B, ksize, nsize)
+                    let A = A, C = C, B = _B
+                        for m in CloseOpen(Miter)
+                            msize = ifelse((m+1) == Miter, Mremfinal, ifelse(m < Mrem, Mblock_Mrem, Mblock))
+                            if k == 0
+                                packaloopmul!(C, A, B, α,     β, msize, ksize, nsize)
+                            else
+                                packaloopmul!(C, A, B, α, One(), msize, ksize, nsize)
+                            end
+                            A = gesp(A, (msize, Zero()))
+                            C = gesp(C, (msize, Zero()))
+                        end
+                    end
+                    A = gesp(A, (Zero(), ksize))
+                    B = gesp(B, (ksize, Zero()))
+                end
+            end
+            B = gesp(B, (Zero(), nsize))
+            C = gesp(C, (Zero(), nsize))
+        end
+    end # GC.@preserve
+    _free_bcache!(bcache)
+    nothing
+end
+
+@inline contiguousstride1(A) = ArrayInterface.contiguous_axis(A) === ArrayInterface.Contiguous{1}()
+@inline contiguousstride1(A::AbstractStridedPointer{T,N,1}) where {T,N} = true
+# @inline bytestride(A::AbstractArray, i) = VectorizationBase.bytestrides(A)[i]
+@inline bytestride(A::AbstractStridedPointer, i) = strides(A)[i]
+@inline firstbytestride(A::AbstractStridedPointer) = bytestride(A, One())
+
+@inline function vectormultiple(bytex, ::Type{Tc}, ::Type{Ta}) where {Tc,Ta}
+    Wc = VectorizationBase.pick_vector_width_val(Tc) * static_sizeof(Ta) - One()
+    iszero(bytex & (VectorizationBase.REGISTER_SIZE - 1))
+end
+@inline function dontpack(pA::AbstractStridedPointer{Ta}, M, K, ::StaticInt{mc}, ::StaticInt{kc}, ::Type{Tc}) where {mc, kc, Tc, Ta}
+    (contiguousstride1(pA) &&
+         ((((VectorizationBase.AVX512F ? 9 : 13) * VectorizationBase.pick_vector_width(Tc)) ≥ M) ||
+          (vectormultiple(bytestride(pA, StaticInt{2}()), Tc, Ta) && ((M * K) ≤ (mc * kc)) && iszero(reinterpret(Int, pointer(pA)) & (VectorizationBase.REGISTER_SIZE - 1)))))
+end
+
+
+@inline function alloc_matmul_product(A::AbstractArray{TA}, B::AbstractArray{TB}) where {TA,TB}
+    # TODO: if `M` and `N` are statically sized, shouldn't return a `Matrix`.
+    M, KA = size(A)
+    KB, N = size(B)
+    @assert KA == KB "Size mismatch."
+    Matrix{promote_type(TA,TB)}(undef, M, N), (M, KA, N)
+end
+@inline function matmul_serial(A::AbstractMatrix, B::AbstractMatrix)
+    C, (M,K,N) = alloc_matmul_product(A, B)
+    _matmul_serial!(C, A, B, One(), Zero(), (M,K,N))
+    return C
+end
+
+
+# These methods must be compile time constant
+maybeinline(::Any, ::Any, ::Any, ::Any) = false
+function maybeinline(::StaticInt{M}, ::StaticInt{N}, ::Type{T}, ::Val{true}) where {M,N,T}
+    static_sizeof(T) * StaticInt{M}() * StaticInt{N}() < StaticInt{176}() * StaticInt(mᵣ) * StaticInt{nᵣ}()
+end
+function maybeinline(::StaticInt{M}, ::StaticInt{N}, ::Type{T}, ::Val{false}) where {M,N,T}
+    StaticInt{M}() * static_sizeof(T) ≤ StaticInt{2}() * StaticInt{VectorizationBase.REGISTER_SIZE}()
+end
+
+
+@inline function matmul_serial!(C::AbstractMatrix{T}, A::AbstractMatrix, B::AbstractMatrix) where {T}
+    matmul_serial!(C, A, B, One(), Zero(), nothing, ArrayInterface.contiguous_axis(C))
+end
+@inline function matmul_serial!(C::AbstractMatrix, A::AbstractMatrix, B::AbstractMatrix, α)
+    matmul_serial!(C, A, B, α, Zero(), nothing, ArrayInterface.contiguous_axis(C))
+end
+@inline function matmul_serial!(C::AbstractMatrix, A::AbstractMatrix, B::AbstractMatrix, α, β)
+    matmul_serial!(C, A, B, α, β, nothing, ArrayInterface.contiguous_axis(C))
+end
+@inline function matmul_serial!(C::AbstractMatrix, A::AbstractMatrix, B::AbstractMatrix, α, β, MKN, ::ArrayInterface.Contiguous{2})
+    _matmul_serial!(C', B', A', α, β, nothing)
+    return C
+end
+@inline function matmul_serial!(C::AbstractMatrix, A::AbstractMatrix, B::AbstractMatrix, α, β, MKN, ::ArrayInterface.Contiguous)
+    _matmul_serial!(C, A, B, α, β, nothing)
+    return C
+end
+
+"""
+  matmul_serial!(C, A, B[, α = 1, β = 0])
+
+Calculates `C = α * (A * B) + β * C` in place.
+
+A single threaded matrix-matrix-multiply implementation.
+Supports dynamically and statically sized arrays.
+
+Organizationally, `matmul_serial!` checks the arrays properties to try and dispatch to an appropriate implementation.
+If the arrays are small and statically sized, it will dispatch to an inlined multiply.
+
+Otherwise, based on the array's size, whether they are transposed, and whether the columns are already aligned, it decides to not pack at all, to pack only `A`, or to pack both arrays `A` and `B`.
+"""
+@inline function _matmul_serial!(
+    C::AbstractMatrix{T}, A::AbstractMatrix, B::AbstractMatrix, α, β, MKN
+) where {T}
+    M, K, N = MKN === nothing ? matmul_sizes(C, A, B) : MKN
+    pA = zstridedpointer(A); pB = zstridedpointer(B); pC = zstridedpointer(C);
+    Cb = preserve_buffer(C); Ab = preserve_buffer(A); Bb = preserve_buffer(B);
+    Mc, Kc, Nc = block_sizes(T)
+    GC.@preserve Cb Ab Bb begin
+        if maybeinline(M, N, T, ArrayInterface.is_column_major(A)) # check MUST be compile-time resolvable
+            inlineloopmul!(pC, pA, pB, One(), Zero(), M, K, N)
+            return
+        elseif VectorizationBase.CACHE_SIZE[2] === nothing ||  (nᵣ ≥ N) || dontpack(pA, M, K, Mc, Kc, T)
+            loopmul!(pC, pA, pB, α, β, M, K, N)
+            return
+        else
+            matmul_st_pack_dispatcher!(pC, pA, pB, α, β, M, K, N)
+            return
+        end
+    end
+end # function
+
+function matmul_st_pack_dispatcher!(pC::AbstractStridedPointer{T}, pA, pB, α, β, M, K, N, notnested::Union{Nothing,Bool} = nothing) where {T}
+    Mc, Kc, Nc = block_sizes(T)
+    if VectorizationBase.CACHE_SIZE[3] === nothing || (contiguousstride1(pB) ? (Kc * Nc ≥ K * N) : (firstbytestride(pB) ≤ 1600))
+        matmul_st_only_pack_A!(pC, pA, pB, α, β, M, K, N, StaticFloat{W₁Default}(), StaticFloat{W₂Default}(), StaticFloat{R₁Default}(), StaticFloat{R₂Default}())
+    elseif notnested === nothing ? iszero(ccall(:jl_in_threaded_region, Cint, ())) : notnested
+        matmul_st_pack_A_and_B!(pC, pA, pB, α, β, M, K, N, StaticFloat{W₁Default}(), StaticFloat{W₂Default}(), StaticFloat{R₁Default}(), StaticFloat{R₂Default}(), nothing)
+    else
+        matmul_st_pack_A_and_B!(pC, pA, pB, α, β, M, K, N, StaticFloat{W₁Default}(), StaticFloat{W₂Default}(), StaticFloat{R₁Default}(), R₂Default/Threads.nthreads(), Threads.threadid())
+    end
+    nothing
+end
+
+
+"""
+    matmul(A, B)
+
+Multiply matrices `A` and `B`.
+"""
+@inline function matmul(A::AbstractMatrix, B::AbstractMatrix)
+    C, (M,K,N) = alloc_matmul_product(A, B)
+    _matmul!(C, A, B, One(), Zero(), nothing, (M,K,N))
+    return C
+end
+
+"""
+    matmul!(C, A, B[, α, β, max_threads])
+
+Calculates `C = α * A * B + β * C` in place, overwriting the contents of `A`.
+It may use up to `max_threads` threads. It will not use threads when nested in other threaded code.
+"""
+@inline function matmul!(C::AbstractMatrix{T}, A::AbstractMatrix, B::AbstractMatrix) where {T}
+    matmul!(C, A, B, One(), Zero(), nothing, nothing, ArrayInterface.contiguous_axis(C))
+end
+@inline function matmul!(C::AbstractMatrix, A::AbstractMatrix, B::AbstractMatrix, α)
+    matmul!(C, A, B, α, Zero(), nothing, nothing, ArrayInterface.contiguous_axis(C))
+end
+@inline function matmul!(C::AbstractMatrix, A::AbstractMatrix, B::AbstractMatrix, α, β)
+    matmul!(C, A, B, α, β, nothing, nothing, ArrayInterface.contiguous_axis(C))
+end
+@inline function matmul!(C::AbstractMatrix, A::AbstractMatrix, B::AbstractMatrix, α, β, nthread)
+    matmul!(C, A, B, α, β, nthread, nothing, ArrayInterface.contiguous_axis(C))
+end
+@inline function matmul!(C::AbstractMatrix, A::AbstractMatrix, B::AbstractMatrix, α, β, nthread, MKN, ::ArrayInterface.Contiguous{2})
+    _matmul!(C', B', A', α, β, nthread, MKN)
+    return C
+end
+@inline function matmul!(C::AbstractMatrix, A::AbstractMatrix, B::AbstractMatrix, α, β, nthread, MKN, ::ArrayInterface.Contiguous)
+    _matmul!(C, A, B, α, β, nthread, MKN)
+    return C
+end
+
+
+@inline function dontpack(pA::AbstractStridedPointer{Ta}, M, K, ::StaticInt{mc}, ::StaticInt{kc}, ::Type{Tc}, nspawn) where {mc, kc, Tc, Ta}
+    # MᵣW = VectorizationBase.pick_vector_width_val(Tc) * StaticInt{mᵣ}()
+    # TODO: perhaps consider K vs kc by themselves?
+    (contiguousstride1(pA) && ((M * K) ≤ (mc * kc) * nspawn >>> 1))
+end
+
+# passing MKN directly would let osmeone skip the size check.
+@inline function _matmul!(C::AbstractMatrix{T}, A, B, α, β, nthread, MKN) where {T}#::Union{Nothing,Tuple{Vararg{Integer,3}}}) where {T}
+    M, K, N = MKN === nothing ? matmul_sizes(C, A, B) : MKN
+    W = VectorizationBase.pick_vector_width_val(T)
+    pA = zstridedpointer(A); pB = zstridedpointer(B); pC = zstridedpointer(C);
+    Cb = preserve_buffer(C); Ab = preserve_buffer(A); Bb = preserve_buffer(B);
+    GC.@preserve Cb Ab Bb begin
+        if maybeinline(M, N, T, ArrayInterface.is_column_major(A)) # check MUST be compile-time resolvable
+            inlineloopmul!(pC, pA, pB, One(), Zero(), M, K, N)
+            return
+        elseif (nᵣ ≥ N) || (M*K*N < (StaticInt{13824}() * W))
+            loopmul!(pC, pA, pB, α, β, M, K, N)
+            return
+        else
+            __matmul!(pC, pA, pB, α, β, M, K, N, nthread)
+            return
         end
     end
 end
 
-"""
-    matmul(A::AbstractMatrix, B::AbstractMatrix)
+# This funciton is sort of a `pun`. It splits aggressively (it does a lot of "splitin'"), which often means it will split-N.
+function matmulsplitn!(C::AbstractStridedPointer{T}, A, B, α, β, ::StaticInt{Mc}, M, K, N, nspawn, ::Val{PACK}) where {T, Mc, PACK}
+    Mᵣ = StaticInt{mᵣ}(); Nᵣ = StaticInt{nᵣ}();
+    W = VectorizationBase.pick_vector_width_val(T)
+    MᵣW = Mᵣ*W
 
-Return the matrix product A*B.
-"""
-function matmul(A::AbstractMatrix{Ta}, B::AbstractMatrix{Tb}) where {Ta, Tb}
-    # TODO: use `similar` / make it more generic; ideally should work with `StaticArrays.MArray`
-    C = Matrix{promote_type(Ta, Tb)}(undef, size(A,1), size(B,2))
-    matmul!(C, A, B)
+    _Mblocks, Nblocks = divide_blocks(M, cld_fast(N, Nᵣ), nspawn, W)
+    Mbsize, Mrem, Mremfinal, Mblocks = split_m(M, _Mblocks, W)
+    # Nblocks = min(N, _Nblocks)
+    Nbsize, Nrem = divrem_fast(N, Nblocks)
+
+    _nspawn = Mblocks * Nblocks
+    Mbsize_Mrem, Mbsize_ = promote(Mbsize +     W, Mbsize)
+    Nbsize_Nrem, Nbsize_ = promote(Nbsize + One(), Nbsize)
+
+    let _A = A, _B = B, _C = C, n = 0, tnum = 0, Nrc = Nblocks - Nrem, Mrc = Mblocks - Mrem, __Mblocks = Mblocks - One()
+        while true
+            nsize = ifelse(Nblocks > Nrc, Nbsize_Nrem, Nbsize_); Nblocks -= 1
+            let _A = _A, _C = _C, __Mblocks = __Mblocks
+                while __Mblocks != 0
+                    msize = ifelse(__Mblocks ≥ Mrc, Mbsize_Mrem, Mbsize_); __Mblocks -= 1
+                    launch_thread_mul!(_C, _A, _B, α, β, msize, K, nsize, (tnum += 1), Val{PACK}())
+                    _A = gesp(_A, (msize, Zero()))
+                    _C = gesp(_C, (msize, Zero()))
+                end
+                if Nblocks != 0
+                    launch_thread_mul!(_C, _A, _B, α, β, Mremfinal, K, nsize, (tnum += 1), Val{PACK}())
+                else
+                    call_loopmul!(_C, _A, _B, α, β, Mremfinal, K, nsize, Val{PACK}())
+                    waitonmultasks(CloseOpen(One(), _nspawn))
+                    return
+                end
+            end
+            _B = gesp(_B, (Zero(), nsize))
+            _C = gesp(_C, (Zero(), nsize))
+        end
+    end
 end
+
+function __matmul!(
+    C::AbstractStridedPointer{T}, A::AbstractStridedPointer, B::AbstractStridedPointer, α, β, M, K, N, nthread
+) where {T}
+    Mᵣ = StaticInt{mᵣ}(); Nᵣ = StaticInt{nᵣ}();
+    W = VectorizationBase.pick_vector_width_val(T)
+    Mc, Kc, Nc = block_sizes(T)
+    MᵣW = Mᵣ*W
+
+    # Not taking the fast path
+    # But maybe we don't want to thread anyway
+    # Maybe this is nested, or we have ≤ 1 threads
+    nt = _nthreads()
+    _nthread = nthread === nothing ? nt : min(nt, nthread)
+    not_in_threaded = iszero(ccall(:jl_in_threaded_region, Cint, ()))
+    if (!not_in_threaded) | (_nthread ≤ 1)
+        matmul_st_pack_dispatcher!(pC, pA, pB, α, β, M, K, N, not_in_threaded)
+        return
+    end
+    # We are threading, but how many threads?
+    L = StaticInt{128}() * W
+    # L = StaticInt{64}() * W
+    nspawn = clamp(div_fast(M * N, L), 1, _nthread)
+    
+    # nkern = cld_fast(M * N,  MᵣW * Nᵣ)
+    # Approach:
+    # Check if we don't want to pack A,
+    #    if not, aggressively subdivide
+    # if so, check if we don't want to pack B
+    #    if not, check if we want to thread `N` loop anyway
+    #       if so, divide `M` first, then use ratio of desired divisions / divisions along `M` to calc divisions along `N`
+    #       if not, only thread along `M`. These don't need syncing, as we're not packing `B`
+    #    if so, `matmul_pack_A_and_B!`
+    #
+    # MᵣW * (MᵣW_mul_factor - One()) # gives a smaller Mc, then
+    # if 2M/nspawn is less than it, we don't don't `A`
+    # First check is: do we just want to split aggressively?
+    if VectorizationBase.CACHE_SIZE[2] === nothing ||  # do not pack A
+        dontpack(A, M, K, Mc, Kc, T, nspawn) || (W ≥ M) || (nᵣ*nspawn ≥ N)
+        # `nᵣ*nspawn ≥ N` is needed at the moment to avoid accidentally splitting `N` to be `< nᵣ` while packing
+        # Should probably handle that with a smarter splitting function...
+        matmulsplitn!(C, A, B, α, β, Mc, M, K, N, nspawn, Val{false}())
+    elseif (nspawn*W > M) || (contiguousstride1(B) ? (roundtostaticint(Kc * Nc * StaticFloat{R₂Default}()) ≥ K * N) : (firstbytestride(B) ≤ 1600))
+    # elseif (contiguousstride1(B) ? (roundtostaticint(Kc * Nc * StaticFloat{R₂Default}()) ≥ K * N) : (firstbytestride(B) ≤ 1600))
+        matmulsplitn!(C, A, B, α, β, Mc, M, K, N, nspawn, Val{true}())
+    else # TODO: Allow splitting along `N` for `matmul_pack_A_and_B!`
+        matmul_pack_A_and_B!(C, A, B, α, β, M, K, N, nspawn, StaticFloat{W₁Default}(), StaticFloat{W₂Default}(), StaticFloat{R₁Default}(), StaticFloat{R₂Default}())
+    end
+    nothing
+end
+
+# If tasks is [0,1,2,3] (e.g., `CloseOpen(0,4)`), it will wait on `MULTASKS[i]` for `i = [1,2,3]`.
+function waitonmultasks(tasks)
+    for tid ∈ tasks
+        __wait(tid)
+    end
+end
+
+function matmul_pack_A_and_B!(
+    C::AbstractStridedPointer{T}, A::AbstractStridedPointer, B::AbstractStridedPointer, α, β, M, K, N,
+    tospawn::Int, ::StaticFloat{W₁}, ::StaticFloat{W₂}, ::StaticFloat{R₁}, ::StaticFloat{R₂}#, ::Val{1}
+) where {T,W₁,W₂,R₁,R₂}
+    W = VectorizationBase.pick_vector_width_val(T)
+    mᵣW = StaticInt{mᵣ}() * W
+
+    # to_spawn = length(tasks)
+    atomicsync = Ref{NTuple{9,UInt}}()
+    p = Base.unsafe_convert(Ptr{UInt}, atomicsync)
+    _atomic_min!(p, zero(UInt)); _atomic_min!(p + 8sizeof(UInt), zero(UInt))
+    Mbsize, Mrem, Mremfinal, _to_spawn = split_m(M, tospawn, W) # M is guaranteed to be > W because of `W ≥ M` condition for `jmultsplitn!`...
+#    Mbsize, Mrem, Mremfinal, _to_spawn = split_m(M, tospawn, mᵣW) # M is guaranteed to be > W because of `W ≥ M` condition for `jmultsplitn!`...
+    Mblock_Mrem, Mblock_ = promote(Mbsize + W, Mbsize)
+    u_to_spawn = _to_spawn % UInt
+    tid = 0
+    bc = _use_bcache()
+    bc_ptr = Base.unsafe_convert(typeof(pointer(C)), pointer(bc))
+    GC.@preserve atomicsync begin
+        for m ∈ CloseOpen(One(), _to_spawn) # ...thus the fact that `CloseOpen()` iterates at least once is okay.
+            Mblock = ifelse(m ≤ Mrem, Mblock_Mrem, Mblock_)
+            launch_thread_mul!(C, A, B, α, β, Mblock, K, N, p, bc_ptr, m % UInt, u_to_spawn, StaticFloat{W₁}(),StaticFloat{W₂}(),StaticFloat{R₁}(),StaticFloat{R₂}())
+            A = gesp(A, (Mblock, Zero()))
+            C = gesp(C, (Mblock, Zero()))
+        end
+        sync_mul!(C, A, B, α, β, Mremfinal, K, N, p, bc_ptr, zero(UInt), u_to_spawn, StaticFloat{W₁}(), StaticFloat{W₂}(), StaticFloat{R₁}(), StaticFloat{R₂}())
+        waitonmultasks(CloseOpen(One(), _to_spawn))
+    end
+    _free_bcache!(bc)
+    return
+end
+
+function sync_mul!(
+    C::AbstractStridedPointer{T}, A::AbstractStridedPointer, B::AbstractStridedPointer, α, β, M, K, N, atomicp::Ptr{UInt}, bc::Ptr, id::UInt, total_ids::UInt,
+    ::StaticFloat{W₁}, ::StaticFloat{W₂}, ::StaticFloat{R₁}, ::StaticFloat{R₂}
+) where {T, W₁, W₂, R₁, R₂}
+
+    (Mblock, Mblock_Mrem, Mremfinal, Mrem, Miter), (Kblock, Kblock_Krem, Krem, Kiter), (Nblock, Nblock_Nrem, Nrem, Niter) =
+        solve_block_sizes(T, M, K, N, StaticFloat{W₁}(), StaticFloat{W₂}(), StaticFloat{R₁}(), StaticFloat{R₂}(), One())
+
+    last_id = total_ids - one(UInt)
+    atomics = atomicp + 8sizeof(UInt)
+    sync_iters = zero(UInt64)
+
+    Npackb_r_div, Npackb_r_rem = divrem_fast(Nblock_Nrem, total_ids)
+    Npackb_r_block_rem, Npackb_r_block_ = promote(Npackb_r_div + One(), Npackb_r_div)
+
+    Npackb___div, Npackb___rem = divrem_fast(Nblock, total_ids)
+    Npackb___block_rem, Npackb___block_ = promote(Npackb___div + One(), Npackb___div)
+
+    pack_r_offset = Npackb_r_div * id + min(id, Npackb_r_rem)
+    pack___offset = Npackb___div * id + min(id, Npackb___rem)
+    
+    pack_r_len = ifelse(id < Npackb_r_rem, Npackb_r_block_rem, Npackb_r_block_)
+    pack___len = ifelse(id < Npackb___rem, Npackb___block_rem, Npackb___block_)
+
+    GC.@preserve BCACHE begin
+        for n in CloseOpen(Niter)
+            # Krem
+            # pack kc x nc block of B
+            nfull = n < Nrem
+            nsize = ifelse(nfull, Nblock_Nrem, Nblock)
+            pack_offset = ifelse(nfull, pack_r_offset, pack___offset)
+            pack_len = ifelse(nfull, pack_r_len, pack___len)
+            let A = A, B = B#, C = C
+                for k ∈ CloseOpen(Kiter)
+                    ksize = ifelse(k < Krem, Kblock_Krem, Kblock)
+                    _B = default_zerobased_stridedpointer(bc, (One(), ksize))
+                    unsafe_copyto_avx!(gesp(_B, (Zero(), pack_offset)), gesp(B, (Zero(), pack_offset)), ksize, pack_len)
+                    # synchronize before starting the multiplication, to ensure `B` is packed
+                    sync_iters += total_ids
+                    _mv = _atomic_add!(atomicp, one(UInt))
+                    while _mv < sync_iters
+                        pause()
+                        _mv = _atomic_max!(atomicp, zero(UInt))
+                    end
+                    # multiply
+                    let A = A, B = _B, C = C
+                        for m in CloseOpen(Miter)
+                            msize = ifelse((m+1) == Miter, Mremfinal, ifelse(m < Mrem, Mblock_Mrem, Mblock))
+                            if k == 0
+                                packaloopmul!(C, A, B, α,     β, msize, ksize, nsize)
+                            else
+                                packaloopmul!(C, A, B, α, One(), msize, ksize, nsize)
+                            end
+                            A = gesp(A, (msize, Zero()))
+                            C = gesp(C, (msize, Zero()))
+                        end
+                    end
+                    A = gesp(A, (Zero(), ksize))
+                    B = gesp(B, (ksize, Zero()))
+                    # synchronize on completion so we wait until every thread is done with `Bpacked` before beginning to overwrite it
+                    _mv = _atomic_add!(atomics, one(UInt))
+                    while _mv < sync_iters
+                        pause()
+                        _mv = _atomic_max!(atomics, zero(UInt))
+                    end
+                end
+            end
+            B = gesp(B, (Zero(), nsize))
+            C = gesp(C, (Zero(), nsize))
+        end
+    end # GC.@preserve
+    nothing
+end
+
+
+
+
