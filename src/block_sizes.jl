@@ -8,6 +8,9 @@ function matmul_params(::Type{T}, _α, _β, R₁, R₂) where {T}
     β = _β * W
     L₁ₑ = first_effective_cache(T) * R₁
     L₂ₑ = second_effective_cache(T) * R₂
+    matmul_params(W, α, β, L₁ₑ, L₂ₑ)
+end
+function matmul_params(W, α, β, L₁ₑ, L₂ₑ)
     MᵣW = StaticInt{mᵣ}() * W
     
     Mc = floortostaticint(√(L₁ₑ)*√(L₁ₑ*β + L₂ₑ*α)/√(L₂ₑ) / MᵣW) * MᵣW

@@ -92,7 +92,7 @@ end
     M, KA = size(A)
     KB, N = size(B)
     @assert KA == KB "Size mismatch."
-    Matrix{T}(undef, M, N), (M, KA, N)
+    Matrix{promote_type(TA,TB)}(undef, M, N), (M, KA, N)
 end
 @inline function matmul_serial(A::AbstractMatrix, B::AbstractMatrix)
     C, (M,K,N) = alloc_matmul_product(A, B)
