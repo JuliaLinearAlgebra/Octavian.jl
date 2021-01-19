@@ -246,7 +246,6 @@ function matmulsplitn!(C::AbstractStridedPointer{T}, A, B, α, β, ::StaticInt{M
     Mᵣ = StaticInt{mᵣ}(); Nᵣ = StaticInt{nᵣ}();
     W = VectorizationBase.pick_vector_width_val(T)
     MᵣW = Mᵣ*W
-
     _Mblocks, Nblocks = divide_blocks(M, cld_fast(N, Nᵣ), nspawn, W)
     Mbsize, Mrem, Mremfinal, Mblocks = split_m(M, _Mblocks, W)
     # Nblocks = min(N, _Nblocks)
@@ -302,7 +301,7 @@ function __matmul!(
     L = StaticInt{128}() * W
     # L = StaticInt{64}() * W
     nspawn = clamp(div_fast(M * N, L), 1, _nthread)
-    
+
     # nkern = cld_fast(M * N,  MᵣW * Nᵣ)
     # Approach:
     # Check if we don't want to pack A,
@@ -321,14 +320,16 @@ function __matmul!(
         # `nᵣ*nspawn ≥ N` is needed at the moment to avoid accidentally splitting `N` to be `< nᵣ` while packing
         # Should probably handle that with a smarter splitting function...
         matmulsplitn!(C, A, B, α, β, Mc, M, K, N, nspawn, Val{false}())
-    elseif (nspawn*W > M) || (contiguousstride1(B) ? (roundtostaticint(Kc * Nc * StaticFloat{R₂Default}()) ≥ K * N) : (firstbytestride(B) ≤ 1600))
-    # elseif (contiguousstride1(B) ? (roundtostaticint(Kc * Nc * StaticFloat{R₂Default}()) ≥ K * N) : (firstbytestride(B) ≤ 1600))
+    # elseif ((nspawn*W > M) || (contiguousstride1(B) ? (roundtostaticint(Kc * Nc * StaticFloat{R₂Default}()) ≥ K * N) : (firstbytestride(B) ≤ 1600)))
+    elseif (sizeof(Int) == 4) || ((nspawn*W > M) || (contiguousstride1(B) ? (roundtostaticint(Kc * Nc * StaticFloat{R₂Default}()) ≥ K * N) : (firstbytestride(B) ≤ 1600)))
+        # FIXME: allow packing `B` on 32-bit systems
         matmulsplitn!(C, A, B, α, β, Mc, M, K, N, nspawn, Val{true}())
     else # TODO: Allow splitting along `N` for `matmul_pack_A_and_B!`
         matmul_pack_A_and_B!(C, A, B, α, β, M, K, N, nspawn, StaticFloat{W₁Default}(), StaticFloat{W₂Default}(), StaticFloat{R₁Default}(), StaticFloat{R₂Default}())
     end
     nothing
 end
+
 
 # If tasks is [0,1,2,3] (e.g., `CloseOpen(0,4)`), it will wait on `MULTASKS[i]` for `i = [1,2,3]`.
 function waitonmultasks(tasks)
@@ -343,9 +344,8 @@ function matmul_pack_A_and_B!(
 ) where {T,W₁,W₂,R₁,R₂}
     W = VectorizationBase.pick_vector_width_val(T)
     mᵣW = StaticInt{mᵣ}() * W
-
     # to_spawn = length(tasks)
-    atomicsync = Ref{NTuple{9,UInt}}()
+    atomicsync = Ref{NTuple{16,UInt}}()
     p = Base.unsafe_convert(Ptr{UInt}, atomicsync)
     _atomic_min!(p, zero(UInt)); _atomic_min!(p + 8sizeof(UInt), zero(UInt))
     Mbsize, Mrem, Mremfinal, _to_spawn = split_m(M, tospawn, W) # M is guaranteed to be > W because of `W ≥ M` condition for `jmultsplitn!`...
@@ -379,8 +379,7 @@ function sync_mul!(
 
     last_id = total_ids - one(UInt)
     atomics = atomicp + 8sizeof(UInt)
-    sync_iters = zero(UInt64)
-
+    sync_iters = zero(UInt)
     Npackb_r_div, Npackb_r_rem = divrem_fast(Nblock_Nrem, total_ids)
     Npackb_r_block_rem, Npackb_r_block_ = promote(Npackb_r_div + One(), Npackb_r_div)
 
@@ -389,7 +388,7 @@ function sync_mul!(
 
     pack_r_offset = Npackb_r_div * id + min(id, Npackb_r_rem)
     pack___offset = Npackb___div * id + min(id, Npackb___rem)
-    
+
     pack_r_len = ifelse(id < Npackb_r_rem, Npackb_r_block_rem, Npackb_r_block_)
     pack___len = ifelse(id < Npackb___rem, Npackb___block_rem, Npackb___block_)
 
@@ -401,7 +400,7 @@ function sync_mul!(
             nsize = ifelse(nfull, Nblock_Nrem, Nblock)
             pack_offset = ifelse(nfull, pack_r_offset, pack___offset)
             pack_len = ifelse(nfull, pack_r_len, pack___len)
-            let A = A, B = B#, C = C
+            let A = A, B = B
                 for k ∈ CloseOpen(Kiter)
                     ksize = ifelse(k < Krem, Kblock_Krem, Kblock)
                     _B = default_zerobased_stridedpointer(bc, (One(), ksize))
@@ -442,7 +441,3 @@ function sync_mul!(
     end # GC.@preserve
     nothing
 end
-
-
-
-
