@@ -1,7 +1,7 @@
 name = "Octavian"
 uuid = "6fd5a793-0b7e-452c-907f-f8bfe9c57db4"
 authors = ["Mason Protter", "Chris Elrod", "Dilum Aluthge", "contributors"]
-version = "0.1.0"
+version = "0.1.1"
 
 [deps]
 ArrayInterface = "4fba245c-0d91-5ea0-9b3e-6abc04ee57a9"
@@ -12,7 +12,7 @@ VectorizationBase = "3d5dd08c-fd9d-11e8-17fa-ed2836048c2f"
 [compat]
 ArrayInterface = "2.14"
 LoopVectorization = "0.9.18"
-ThreadingUtilities = "0.1"
+ThreadingUtilities = "0.1.1"
 VectorizationBase = "0.15.2"
 julia = "1.5"
 

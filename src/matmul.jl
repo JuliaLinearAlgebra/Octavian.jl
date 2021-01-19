@@ -295,7 +295,7 @@ function __matmul!(
     _nthread = nthread === nothing ? nt : min(nt, nthread)
     not_in_threaded = iszero(ccall(:jl_in_threaded_region, Cint, ()))
     if (!not_in_threaded) | (_nthread ≤ 1)
-        matmul_st_pack_dispatcher!(pC, pA, pB, α, β, M, K, N, not_in_threaded)
+        matmul_st_pack_dispatcher!(C, A, B, α, β, M, K, N, not_in_threaded)
         return
     end
     # We are threading, but how many threads?
