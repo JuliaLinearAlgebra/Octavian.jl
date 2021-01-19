@@ -16,15 +16,15 @@ const CORE_FACTORS = calc_factors()
 const MᵣW_mul_factor = VectorizationBase.REGISTER_SIZE === 64 ? StaticInt{4}() : StaticInt{9}()
 
 if VectorizationBase.AVX512F
-    const W₁Default = 0.006131471369820045
-    const W₂Default = 0.7646526105725088
-    const R₁Default = 0.5577652012322807
-    const R₂Default = 0.7586696322536083
+    const W₁Default = 0.006089395198610773
+    const W₂Default = 0.7979822724696168
+    const R₁Default = 0.5900561503730485
+    const R₂Default = 0.762152930709678
 else
-    const W₁Default = 0.0888571100241128
-    const W₂Default = 0.5283378068764165
-    const R₁Default = 0.41520001574995036
-    const R₂Default = 0.681381024297185
+    const W₁Default = 0.1 # TODO: relax bounds; this was the upper bound set for the optimizer.
+    const W₂Default = 0.15989396641218157
+    const R₁Default = 0.4203583148344484
+    const R₂Default = 0.6344856142604789
 end
 
 const FIRST__CACHE = 1 + (VectorizationBase.CACHE_SIZE[3] !== nothing)
