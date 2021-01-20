@@ -345,11 +345,10 @@ function matmul_pack_A_and_B!(
     mᵣW = StaticInt{mᵣ}() * W
     # atomicsync = Ref{NTuple{16,UInt}}()
     Mbsize, Mrem, Mremfinal, _to_spawn = split_m(M, tospawn, W) # M is guaranteed to be > W because of `W ≥ M` condition for `jmultsplitn!`...
-    atomicsync = allocref(StaticInt{NUM_CORES}()*StaticInt{2}()*StaticInt{CACHELINESIZE}())
+    atomicsync = allocref(StaticInt{NUM_CORES}()*StaticInt{2}()*StaticInt(CACHELINESIZE))
     p = reinterpret(Ptr{UInt}, Base.unsafe_convert(Ptr{UInt8}, atomicsync))
     GC.@preserve atomicsync begin
         for i ∈ CloseOpen(2_to_spawn)
-            # _atomic_umin!(p + i*CACHELINESIZE, zero(UInt))
             _atomic_store!(p + i*CACHELINESIZE, zero(UInt))
         end
         # _atomic_umin!(p, zero(UInt)); _atomic_umin!(p + 8sizeof(UInt), zero(UInt))
@@ -383,8 +382,10 @@ function sync_mul!(
 
     # atomics = atomicp + 8sizeof(UInt)
     sync_iters = zero(UInt)
-    myp = atomicp + id*((2CACHELINESIZE) % UInt)
-    mys = myp + CACHELINESIZE
+    myp = atomicp +   id *CACHELINESIZE
+    atomicp -= CACHELINESIZE
+    atomics = atomicp + total_ids*CACHELINESIZE
+    mys = myp + total_ids*(CACHELINESIZE % UInt)
     Npackb_r_div, Npackb_r_rem = divrem_fast(Nblock_Nrem, total_ids)
     Npackb_r_block_rem, Npackb_r_block_ = promote(Npackb_r_div + One(), Npackb_r_div)
 
@@ -421,15 +422,12 @@ function sync_mul!(
                     sync_iters += one(UInt)
                     let atomp = atomicp
                         for _ ∈ CloseOpen(total_ids)
-                            if atomp == myp
-                                atomp += ((2CACHELINESIZE) % UInt)
-                                continue
-                            end
+                            atomp += CACHELINESIZE
+                            atomp == myp && continue
                             # while !_atomic_cas_cmp!(atomp, sync_iters, sync_iters)
                             while _atomic_load(atomp) != sync_iters
                                 pause()
                             end
-                            atomp += ((2CACHELINESIZE) % UInt)
                         end
                     end
                     # multiply
@@ -454,9 +452,9 @@ function sync_mul!(
                     #     _mv = _atomic_umax!(atomics, zero(UInt))
                     # end
                     _mv = _atomic_add!(mys, one(UInt))
-                    let atoms = atomicp - (CACHELINESIZE % UInt)
+                    let atoms = atomics
                         for _ ∈ CloseOpen(total_ids)
-                            atoms += ((2CACHELINESIZE) % UInt)
+                            atoms += CACHELINESIZE
                             atoms == mys && continue
                             # while !_atomic_cas_cmp!(atoms, sync_iters, sync_iters)
                             while _atomic_load(atoms) != sync_iters
