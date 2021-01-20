@@ -40,5 +40,8 @@ const CACHELINESIZE = something(VectorizationBase.L₁CACHE.linesize, 64) % UInt
 const BCACHE_COUNT = something(VectorizationBase.CACHE_COUNT[3], 1);
 const BCACHE_LOCK = Threads.Atomic{UInt}(zero(UInt))
 
-
+if Sys.WORD_SIZE ≤ 32
+    const ACACHE = UInt8[]
+    const ACACHEPTR = Ref{Ptr{UInt8}}(C_NULL)
+end
 

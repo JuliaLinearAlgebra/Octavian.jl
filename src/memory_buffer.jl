@@ -12,37 +12,16 @@ end
     @boundscheck checkbounds(m, i)
     GC.@preserve m vstore!(pointer(m), convert(T, x), lazymul(static_sizeof(T), i - one(i)))
 end
-function core_cache_size(::Type{T}, ::Val{N}) where {T,N}
-    CS = VectorizationBase.CACHE_SIZE[N]
-    if CS === nothing
-        nothing
-    else
-        StaticInt{CS}() ÷ static_sizeof(T)
-    end
-end
-function cache_size(::Type{T}, ::Val{N}) where {T,N}
-    CS = VectorizationBase.CACHE_SIZE[N]
-    if CS === nothing
-        nothing
-    else
-        CC = StaticInt{VectorizationBase.CACHE_COUNT[N]}()
-        (StaticInt{CS}() * CC) ÷ (static_sizeof(T))
-    end
-end
-@inline function cache_buffer(::Type{T}, ::Val{N}) where {T,N}
-    CS = VectorizationBase.CACHE_SIZE[N]
-    if CS === nothing
-        nothing
-    else
-        MemoryBuffer{T}(undef, StaticInt{CS}() ÷ static_sizeof(T))# + (StaticInt{4096}() ÷ static_sizeof(T)))
-    end
-end
-@inline function core_cache_buffer(::Type{T}, ::Val{N}) where {T,N}
-    L = core_cache_size(T, Val{N}())
-    L === nothing && return nothing
-    MemoryBuffer{T}(undef, L)
-end
 
+if Sys.WORD_SIZE == 32
+    @inline function first_cache_buffer(::Type{T}) where {T}
+        ACACHEPTR[] + Threads.threadid() * FIRST__CACHE_SIZE - FIRST__CACHE_SIZE
+    end
+else
+    @inline function first_cache_buffer(::Type{T}) where {T}
+        MemoryBuffer{T}(undef, StaticInt{FIRST__CACHE_SIZE}() ÷ static_sizeof(T))
+    end
+end
 
 BCache(i::Integer) = BCache(pointer(BCACHE)+cld_fast(SECOND_CACHE_SIZE*i,Threads.nthreads()), i % UInt)
 BCache(::Nothing) = BCache(pointer(BCACHE), nothing)

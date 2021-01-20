@@ -8,12 +8,16 @@ function matmul_st_only_pack_A!(
 
     ((Mblock, Mblock_Mrem, Mremfinal, Mrem, Miter), (Kblock, Kblock_Krem, Krem, Kiter)) =
         solve_McKc(T, M, K, N, StaticFloat{W₁}(), StaticFloat{W₂}(), StaticFloat{R₁}(), StaticFloat{R₂}(), StaticInt{mᵣ}())
-
     for ko ∈ CloseOpen(Kiter)
         ksize = ifelse(ko < Krem, Kblock_Krem, Kblock)
         let A = A, C = C
             for mo in CloseOpen(Miter)
                 msize = ifelse((mo+1) == Miter, Mremfinal, ifelse(mo < Mrem, Mblock_Mrem, Mblock))
+                # if ko == 0
+                #     loopmul!(C, A, B, α, β, msize, ksize, N)
+                # else
+                #     loopmul!(C, A, B, α, One(), msize, ksize, N)
+                # end
                 if ko == 0
                     packaloopmul!(C, A, B, α, β, msize, ksize, N)
                 else

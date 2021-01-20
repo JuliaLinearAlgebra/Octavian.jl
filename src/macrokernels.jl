@@ -226,8 +226,14 @@ end
    end
 end
 @inline function alloc_a_pack(A, M, ::Type{T}) where {T}
-    buffer = core_cache_buffer(T, Val(2))
-    Apack = default_zerobased_stridedpointer(align(pointer(buffer)), (One(), align(M, T)))
+    # buffer = Vector{T}(undef, FIRST__CACHE_SIZE ÷ sizeof(T))
+    buffer = first_cache_buffer(T)
+    bufferptr = if Sys.WORD_SIZE == 32
+        reinterpret(Ptr{T}, buffer) # Base.unsafe_convert(Ptr{T}, buffer)
+    else
+        align(pointer(buffer))
+    end
+    Apack = default_zerobased_stridedpointer(bufferptr, (One(), align(M, T)))
     Apack, buffer
 end
 @inline function packaloopmul!(
