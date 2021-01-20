@@ -19,12 +19,14 @@ include("test_suite_preamble.jl")
 
 Random.seed!(123)
 
+using Aqua: test_all
+test_all(Octavian)
+
+include("utils.jl")
 include("block_sizes.jl")
 include("init.jl")
 include("macrokernels.jl")
 include("matmul_coverage.jl")
-include("pointer_matrix.jl")
-include("utils.jl")
 
 if !coverage
     include("matmul.jl")

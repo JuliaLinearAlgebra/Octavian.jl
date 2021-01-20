@@ -11,10 +11,15 @@
                 A = rand(Float32, m, k)
                 A′ = permutedims(A)'
                 @show m, k, n
-                @test @time(Octavian.matmul(A, B)) ≈ A * B
-                @test @time(Octavian.matmul(A′, B)) ≈ A′ * B
-                @test @time(Octavian.matmul(A, B′)) ≈ A * B′
-                @test @time(Octavian.matmul(A′, B′)) ≈ A′ * B′
+                AB = A * B; A′B = A′ * B; AB′ = A * B′; A′B′ = A′ * B′;
+                @test @time(Octavian.matmul(A, B)) ≈ AB
+                @test @time(Octavian.matmul(A′, B)) ≈ A′B
+                @test @time(Octavian.matmul(A, B′)) ≈ AB′
+                @test @time(Octavian.matmul(A′, B′)) ≈ A′B′
+                @test @time(Octavian.matmul_serial(A, B)) ≈ AB
+                @test @time(Octavian.matmul_serial(A′, B)) ≈ A′B
+                @test @time(Octavian.matmul_serial(A, B′)) ≈ AB′
+                @test @time(Octavian.matmul_serial(A′, B′)) ≈ A′B′
             end
         end
     end
@@ -33,10 +38,15 @@ end
                 A = rand(Float64, m, k)
                 A′ = permutedims(A)'
                 @show m, k, n
-                @test @time(Octavian.matmul(A, B)) ≈ A * B
-                @test @time(Octavian.matmul(A′, B)) ≈ A′ * B
-                @test @time(Octavian.matmul(A, B′)) ≈ A * B′
-                @test @time(Octavian.matmul(A′, B′)) ≈ A′ * B′
+                AB = A * B; A′B = A′ * B; AB′ = A * B′; A′B′ = A′ * B′;
+                @test @time(Octavian.matmul(A, B)) ≈ AB
+                @test @time(Octavian.matmul(A′, B)) ≈ A′B
+                @test @time(Octavian.matmul(A, B′)) ≈ AB′
+                @test @time(Octavian.matmul(A′, B′)) ≈ A′B′
+                @test @time(Octavian.matmul_serial(A, B)) ≈ AB
+                @test @time(Octavian.matmul_serial(A′, B)) ≈ A′B
+                @test @time(Octavian.matmul_serial(A, B′)) ≈ AB′
+                @test @time(Octavian.matmul_serial(A′, B′)) ≈ A′B′
             end
         end
     end
@@ -55,10 +65,15 @@ end
                 A = rand(Int32, m, k)
                 A′ = permutedims(A)'
                 @show m, k, n
-                @test @time(Octavian.matmul(A, B)) == A * B
-                @test @time(Octavian.matmul(A′, B)) == A′ * B
-                @test @time(Octavian.matmul(A, B′)) == A * B′
-                @test @time(Octavian.matmul(A′, B′)) == A′ * B′
+                AB = A * B; A′B = A′ * B; AB′ = A * B′; A′B′ = A′ * B′;
+                @test @time(Octavian.matmul(A, B)) ≈ AB
+                @test @time(Octavian.matmul(A′, B)) ≈ A′B
+                @test @time(Octavian.matmul(A, B′)) ≈ AB′
+                @test @time(Octavian.matmul(A′, B′)) ≈ A′B′
+                @test @time(Octavian.matmul_serial(A, B)) ≈ AB
+                @test @time(Octavian.matmul_serial(A′, B)) ≈ A′B
+                @test @time(Octavian.matmul_serial(A, B′)) ≈ AB′
+                @test @time(Octavian.matmul_serial(A′, B′)) ≈ A′B′
             end
         end
     end
@@ -77,11 +92,17 @@ end
                 A = rand(Int64, m, k)
                 A′ = permutedims(A)'
                 @show m, k, n
-                @test @time(Octavian.matmul(A, B)) == A * B
-                @test @time(Octavian.matmul(A′, B)) == A′ * B
-                @test @time(Octavian.matmul(A, B′)) == A * B′
-                @test @time(Octavian.matmul(A′, B′)) == A′ * B′
+                AB = A * B; A′B = A′ * B; AB′ = A * B′; A′B′ = A′ * B′;
+                @test @time(Octavian.matmul(A, B)) ≈ AB
+                @test @time(Octavian.matmul(A′, B)) ≈ A′B
+                @test @time(Octavian.matmul(A, B′)) ≈ AB′
+                @test @time(Octavian.matmul(A′, B′)) ≈ A′B′
+                @test @time(Octavian.matmul_serial(A, B)) ≈ AB
+                @test @time(Octavian.matmul_serial(A′, B)) ≈ A′B
+                @test @time(Octavian.matmul_serial(A, B′)) ≈ AB′
+                @test @time(Octavian.matmul_serial(A′, B′)) ≈ A′B′
             end
         end
     end
 end
+
