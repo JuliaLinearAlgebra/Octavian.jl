@@ -316,7 +316,7 @@ function __matmul!(
     # if 2M/nspawn is less than it, we don't don't `A`
     # First check is: do we just want to split aggressively?
     if VectorizationBase.CACHE_SIZE[2] === nothing ||  # do not pack A
-        dontpack(A, M, K, Mc, Kc, T, nspawn) || (W ≥ M) || (nᵣ*nspawn ≥ N)
+        dontpack(A, M, K, Mc, Kc, T, nspawn) || (W ≥ M) || (nᵣ*((NUM_CORES ≥ 8) ? max(nspawn,8) : 8) ≥ N)
         # `nᵣ*nspawn ≥ N` is needed at the moment to avoid accidentally splitting `N` to be `< nᵣ` while packing
         # Should probably handle that with a smarter splitting function...
         matmulsplitn!(C, A, B, α, β, Mc, M, K, N, nspawn, Val{false}())
