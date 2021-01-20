@@ -18,8 +18,8 @@ using ThreadingUtilities:
 
 export StaticInt
 export matmul!
-export matmul_serial!
 export matmul
+export matmul_serial!
 export matmul_serial
 
 include("global_constants.jl")
