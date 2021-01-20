@@ -1,7 +1,7 @@
 
 using Octavian, StaticArrays, LinearAlgebra, BenchmarkTools, ProgressMeter
 
-BLAS.set_num_threads(1)
+# BLAS.set_num_threads(1)
 
 # For laptops that thermally throttle, you can set the `JULIA_SLEEP_BENCH` environment variable for #seconds to sleep before each `@belapsed`
 const SLEEPTIME = parse(Float64, get(ENV, "JULIA_SLEEP_BENCH", "0"))
