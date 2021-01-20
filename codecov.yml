@@ -1,0 +1,7 @@
+coverage:
+  status:
+    project:
+      minimum:
+        target: "35%"
+      goal:
+        target: "95%"
