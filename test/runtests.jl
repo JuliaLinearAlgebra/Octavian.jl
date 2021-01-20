@@ -20,6 +20,7 @@ Random.seed!(123)
 
 include("block_sizes.jl")
 include("init.jl")
+include("integer_division.jl")
 include("macrokernels.jl")
 include("matmul_coverage.jl")
 include("utils.jl")

@@ -4,7 +4,7 @@
     (d + (d * unsigned(y) != unsigned(x))) % I
 end
 @inline cld_fast(::StaticInt{N}, y) where {N} = cld_fast(N, y)
-cld_fast(::StaticInt{N}, ::StaticInt{M}) where {N,M}= (StaticInt{N}() + StaticInt{M}() + One()) ÷ StaticInt{M}()
+cld_fast(::StaticInt{N}, ::StaticInt{M}) where {N,M}= (StaticInt{N}() + StaticInt{M}() - One()) ÷ StaticInt{M}()
 @inline function divrem_fast(x::I, y) where {I <: Integer}
     ux = unsigned(x); uy = unsigned(y)
     d = Base.udiv_int(ux, uy)
