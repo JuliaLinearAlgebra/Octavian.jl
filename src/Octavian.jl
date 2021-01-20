@@ -11,10 +11,10 @@ using ArrayInterface: StaticInt, Zero, One, OptionallyStaticUnitRange, size, str
     dense_dims, DenseDims, stride_rank, StrideRank
 
 using ThreadingUtilities:
-    _atomic_add!, _atomic_max!, _atomic_min!,
+    _atomic_add!, _atomic_umax!, _atomic_umin!,
     _atomic_load, _atomic_store!, _atomic_cas_cmp!,
     SPIN, WAIT, TASK, LOCK, STUP, taskpointer,
-    wake_thread!, __wait
+    wake_thread!, __wait, load, store!
 
 export matmul!, matmul_serial!, matmul, matmul_serial, StaticInt
 

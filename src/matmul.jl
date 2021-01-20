@@ -320,9 +320,7 @@ function __matmul!(
         # `nᵣ*nspawn ≥ N` is needed at the moment to avoid accidentally splitting `N` to be `< nᵣ` while packing
         # Should probably handle that with a smarter splitting function...
         matmulsplitn!(C, A, B, α, β, Mc, M, K, N, nspawn, Val{false}())
-    # elseif ((nspawn*W > M) || (contiguousstride1(B) ? (roundtostaticint(Kc * Nc * StaticFloat{R₂Default}()) ≥ K * N) : (firstbytestride(B) ≤ 1600)))
-    elseif (sizeof(Int) == 4) || ((nspawn*W > M) || (contiguousstride1(B) ? (roundtostaticint(Kc * Nc * StaticFloat{R₂Default}()) ≥ K * N) : (firstbytestride(B) ≤ 1600)))
-        # FIXME: allow packing `B` on 32-bit systems
+    elseif ((nspawn*(W+W) > M) || (contiguousstride1(B) ? (roundtostaticint(Kc * Nc * StaticFloat{R₂Default}()) ≥ K * N) : (firstbytestride(B) ≤ 1600)))
         matmulsplitn!(C, A, B, α, β, Mc, M, K, N, nspawn, Val{true}())
     else # TODO: Allow splitting along `N` for `matmul_pack_A_and_B!`
         matmul_pack_A_and_B!(C, A, B, α, β, M, K, N, nspawn, StaticFloat{W₁Default}(), StaticFloat{W₂Default}(), StaticFloat{R₁Default}(), StaticFloat{R₂Default}())
@@ -338,31 +336,37 @@ function waitonmultasks(tasks)
     end
 end
 
+@inline allocref(::StaticInt{N}) where {N} = Ref{NTuple{N,UInt8}}()
 function matmul_pack_A_and_B!(
     C::AbstractStridedPointer{T}, A::AbstractStridedPointer, B::AbstractStridedPointer, α, β, M, K, N,
     tospawn::Int, ::StaticFloat{W₁}, ::StaticFloat{W₂}, ::StaticFloat{R₁}, ::StaticFloat{R₂}#, ::Val{1}
 ) where {T,W₁,W₂,R₁,R₂}
     W = VectorizationBase.pick_vector_width_val(T)
     mᵣW = StaticInt{mᵣ}() * W
-    # to_spawn = length(tasks)
-    atomicsync = Ref{NTuple{16,UInt}}()
-    p = Base.unsafe_convert(Ptr{UInt}, atomicsync)
-    _atomic_min!(p, zero(UInt)); _atomic_min!(p + 8sizeof(UInt), zero(UInt))
+    # atomicsync = Ref{NTuple{16,UInt}}()
     Mbsize, Mrem, Mremfinal, _to_spawn = split_m(M, tospawn, W) # M is guaranteed to be > W because of `W ≥ M` condition for `jmultsplitn!`...
-#    Mbsize, Mrem, Mremfinal, _to_spawn = split_m(M, tospawn, mᵣW) # M is guaranteed to be > W because of `W ≥ M` condition for `jmultsplitn!`...
-    Mblock_Mrem, Mblock_ = promote(Mbsize + W, Mbsize)
-    u_to_spawn = _to_spawn % UInt
-    tid = 0
-    bc = _use_bcache()
-    bc_ptr = Base.unsafe_convert(typeof(pointer(C)), pointer(bc))
+    atomicsync = allocref(StaticInt{NUM_CORES}()*StaticInt{2}()*StaticInt{CACHELINESIZE}())
+    p = reinterpret(Ptr{UInt}, Base.unsafe_convert(Ptr{UInt8}, atomicsync))
     GC.@preserve atomicsync begin
-        for m ∈ CloseOpen(One(), _to_spawn) # ...thus the fact that `CloseOpen()` iterates at least once is okay.
-            Mblock = ifelse(m ≤ Mrem, Mblock_Mrem, Mblock_)
+        for i ∈ CloseOpen(2_to_spawn)
+            # _atomic_umin!(p + i*CACHELINESIZE, zero(UInt))
+            _atomic_store!(p + i*CACHELINESIZE, zero(UInt))
+        end
+        # _atomic_umin!(p, zero(UInt)); _atomic_umin!(p + 8sizeof(UInt), zero(UInt))
+        #    Mbsize, Mrem, Mremfinal, _to_spawn = split_m(M, tospawn, mᵣW) # M is guaranteed to be > W because of `W ≥ M` condition for `jmultsplitn!`...
+        Mblock_Mrem, Mblock_ = promote(Mbsize + W, Mbsize)
+        u_to_spawn = _to_spawn % UInt
+        tid = 0
+        bc = _use_bcache()
+        bc_ptr = Base.unsafe_convert(typeof(pointer(C)), pointer(bc))
+        last_id = _to_spawn - One()
+        for m ∈ CloseOpen(last_id) # ...thus the fact that `CloseOpen()` iterates at least once is okay.
+            Mblock = ifelse(m < Mrem, Mblock_Mrem, Mblock_)
             launch_thread_mul!(C, A, B, α, β, Mblock, K, N, p, bc_ptr, m % UInt, u_to_spawn, StaticFloat{W₁}(),StaticFloat{W₂}(),StaticFloat{R₁}(),StaticFloat{R₂}())
             A = gesp(A, (Mblock, Zero()))
             C = gesp(C, (Mblock, Zero()))
         end
-        sync_mul!(C, A, B, α, β, Mremfinal, K, N, p, bc_ptr, zero(UInt), u_to_spawn, StaticFloat{W₁}(), StaticFloat{W₂}(), StaticFloat{R₁}(), StaticFloat{R₂}())
+        sync_mul!(C, A, B, α, β, Mremfinal, K, N, p, bc_ptr, last_id % UInt, u_to_spawn, StaticFloat{W₁}(), StaticFloat{W₂}(), StaticFloat{R₁}(), StaticFloat{R₂}())
         waitonmultasks(CloseOpen(One(), _to_spawn))
     end
     _free_bcache!(bc)
@@ -377,9 +381,10 @@ function sync_mul!(
     (Mblock, Mblock_Mrem, Mremfinal, Mrem, Miter), (Kblock, Kblock_Krem, Krem, Kiter), (Nblock, Nblock_Nrem, Nrem, Niter) =
         solve_block_sizes(T, M, K, N, StaticFloat{W₁}(), StaticFloat{W₂}(), StaticFloat{R₁}(), StaticFloat{R₂}(), One())
 
-    last_id = total_ids - one(UInt)
-    atomics = atomicp + 8sizeof(UInt)
+    # atomics = atomicp + 8sizeof(UInt)
     sync_iters = zero(UInt)
+    myp = atomicp + id*((2CACHELINESIZE) % UInt)
+    mys = myp + CACHELINESIZE
     Npackb_r_div, Npackb_r_rem = divrem_fast(Nblock_Nrem, total_ids)
     Npackb_r_block_rem, Npackb_r_block_ = promote(Npackb_r_div + One(), Npackb_r_div)
 
@@ -406,11 +411,26 @@ function sync_mul!(
                     _B = default_zerobased_stridedpointer(bc, (One(), ksize))
                     unsafe_copyto_avx!(gesp(_B, (Zero(), pack_offset)), gesp(B, (Zero(), pack_offset)), ksize, pack_len)
                     # synchronize before starting the multiplication, to ensure `B` is packed
-                    sync_iters += total_ids
-                    _mv = _atomic_add!(atomicp, one(UInt))
-                    while _mv < sync_iters
-                        pause()
-                        _mv = _atomic_max!(atomicp, zero(UInt))
+                    # sync_iters += total_ids
+                    # _mv = _atomic_add!(atomicp, one(UInt))
+                    # while _mv < sync_iters
+                    #     pause()
+                    #     _mv = _atomic_umax!(atomicp, zero(UInt))
+                    # end
+                    _mv = _atomic_add!(myp, one(UInt))
+                    sync_iters += one(UInt)
+                    let atomp = atomicp
+                        for _ ∈ CloseOpen(total_ids)
+                            if atomp == myp
+                                atomp += ((2CACHELINESIZE) % UInt)
+                                continue
+                            end
+                            # while !_atomic_cas_cmp!(atomp, sync_iters, sync_iters)
+                            while _atomic_load(atomp) != sync_iters
+                                pause()
+                            end
+                            atomp += ((2CACHELINESIZE) % UInt)
+                        end
                     end
                     # multiply
                     let A = A, B = _B, C = C
@@ -428,10 +448,21 @@ function sync_mul!(
                     A = gesp(A, (Zero(), ksize))
                     B = gesp(B, (ksize, Zero()))
                     # synchronize on completion so we wait until every thread is done with `Bpacked` before beginning to overwrite it
-                    _mv = _atomic_add!(atomics, one(UInt))
-                    while _mv < sync_iters
-                        pause()
-                        _mv = _atomic_max!(atomics, zero(UInt))
+                    # _mv = _atomic_add!(atomics, one(UInt))
+                    # while _mv < sync_iters
+                    #     pause()
+                    #     _mv = _atomic_umax!(atomics, zero(UInt))
+                    # end
+                    _mv = _atomic_add!(mys, one(UInt))
+                    let atoms = atomicp - (CACHELINESIZE % UInt)
+                        for _ ∈ CloseOpen(total_ids)
+                            atoms += ((2CACHELINESIZE) % UInt)
+                            atoms == mys && continue
+                            # while !_atomic_cas_cmp!(atoms, sync_iters, sync_iters)
+                            while _atomic_load(atoms) != sync_iters
+                                pause()
+                            end
+                        end
                     end
                 end
             end

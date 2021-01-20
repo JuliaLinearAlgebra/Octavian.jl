@@ -36,7 +36,7 @@ const SECOND_CACHE_SIZE = (VectorizationBase.CACHE_SIZE[SECOND_CACHE] === nothin
     (CACHE_INCLUSIVITY[SECOND_CACHE] ? (VectorizationBase.CACHE_SIZE[SECOND_CACHE] - VectorizationBase.CACHE_SIZE[FIRST__CACHE]) :
     VectorizationBase.CACHE_SIZE[SECOND_CACHE])) * something(VectorizationBase.CACHE_COUNT[SECOND_CACHE], 1)
 
-
+const CACHELINESIZE = something(VectorizationBase.L₁CACHE.linesize, 64)
 const BCACHE_COUNT = something(VectorizationBase.CACHE_COUNT[3], 1);
 const BCACHE_LOCK = Threads.Atomic{UInt}(zero(UInt))
 
