@@ -2,7 +2,8 @@ using InteractiveUtils: versioninfo
 
 versioninfo()
 
-@info("Running tests with $(Threads.nthreads()) threads")
+@info("Sys.CPU_THREADS is $(Sys.CPU_THREADS)")
+@info("Threads.nthreads() is $(Threads.nthreads()) threads")
 
 function is_coverage()
     return !iszero(Base.JLOptions().code_coverage)
