@@ -11,25 +11,21 @@ import VectorizationBase
 
 using Test: @testset, @test, @test_throws
 
-@info("Sys.CPU_THREADS is $(Sys.CPU_THREADS)")
-@info("VectorizationBase.NUM_CORES is $(VectorizationBase.NUM_CORES)")
-
 include("test_suite_preamble.jl")
 
-@info("Running Octavian tests with $(Octavian.OCTAVIAN_NUM_TASKS[]) tasks")
+@info("VectorizationBase.NUM_CORES is $(VectorizationBase.NUM_CORES)")
+@info("Octavian.OCTAVIAN_NUM_TASKS[] is $(Octavian.OCTAVIAN_NUM_TASKS[]) tasks")
 
 Random.seed!(123)
 
-include("utils.jl")
 include("block_sizes.jl")
 include("init.jl")
 include("macrokernels.jl")
 include("matmul_coverage.jl")
+include("utils.jl")
 
 if !coverage
-    include("matmul.jl")
+    include("matmul_main.jl")
 end
 
-@testset "Aqua.jl" begin
-    Aqua.test_all(Octavian)
-end
+include("aqua.jl") # run the Aqua.jl tests last
