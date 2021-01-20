@@ -1,5 +1,7 @@
 coverage:
   status:
     project:
-      default:
+      minimum:
         target: "35%"
+      goal:
+        target: "95%"
