@@ -1,5 +1,6 @@
 import Octavian
 
+import Aqua
 import BenchmarkTools
 import InteractiveUtils
 import LinearAlgebra
@@ -10,24 +11,21 @@ import VectorizationBase
 
 using Test: @testset, @test, @test_throws
 
-@info("Sys.CPU_THREADS is $(Sys.CPU_THREADS)")
-@info("VectorizationBase.NUM_CORES is $(VectorizationBase.NUM_CORES)")
-
 include("test_suite_preamble.jl")
 
-@info("Running Octavian tests with $(Octavian.OCTAVIAN_NUM_TASKS[]) tasks")
+@info("VectorizationBase.NUM_CORES is $(VectorizationBase.NUM_CORES)")
+@info("Octavian.OCTAVIAN_NUM_TASKS[] is $(Octavian.OCTAVIAN_NUM_TASKS[]) tasks")
 
 Random.seed!(123)
 
-using Aqua: test_all
-test_all(Octavian)
-
-include("utils.jl")
 include("block_sizes.jl")
 include("init.jl")
 include("macrokernels.jl")
 include("matmul_coverage.jl")
+include("utils.jl")
 
 if !coverage
-    include("matmul.jl")
+    include("matmul_main.jl")
 end
+
+include("aqua.jl") # run the Aqua.jl tests last

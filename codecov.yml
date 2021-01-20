@@ -1,0 +1,9 @@
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+      goal:
+        target: "95%"
+      minimum:
+        target: "35%"

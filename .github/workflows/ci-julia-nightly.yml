@@ -22,7 +22,7 @@ jobs:
           - x86
         os:
           - ubuntu-latest
-          # - windows-latest # TODO: uncomment this line
+          - windows-latest
           - macOS-latest
         threads:
           - '1'
