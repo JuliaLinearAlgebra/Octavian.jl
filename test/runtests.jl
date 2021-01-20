@@ -9,7 +9,7 @@ import Random
 import Test
 import VectorizationBase
 
-using Test: @testset, @test, @test_throws
+using Test: @testset, @test, @test_throws, @inferred
 
 include("test_suite_preamble.jl")
 
@@ -20,6 +20,7 @@ Random.seed!(123)
 
 include("block_sizes.jl")
 include("init.jl")
+include("integer_division.jl")
 include("macrokernels.jl")
 include("matmul_coverage.jl")
 include("utils.jl")
