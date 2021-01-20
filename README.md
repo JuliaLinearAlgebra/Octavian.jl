@@ -26,6 +26,5 @@ Please see the
 [Octavian documentation](https://JuliaLinearAlgebra.github.io/Octavian.jl/stable).
 
 You may also be interested in:
-- [Tullio.jl](https://github.com/mcabbott/Tullio.jl)
-- [Gaius.jl](https://github.com/MasonProtter/Gaius.jl)
-- [PaddedMatrices.jl](https://github.com/chriselrod/PaddedMatrices.jl)
+1. [Tullio.jl](https://github.com/mcabbott/Tullio.jl)
+2. [Gaius.jl](https://github.com/MasonProtter/Gaius.jl)
