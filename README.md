@@ -28,4 +28,3 @@ Please see the
 You may also be interested in:
 - [Tullio.jl](https://github.com/mcabbott/Tullio.jl)
 - [Gaius.jl](https://github.com/MasonProtter/Gaius.jl)
-- [PaddedMatrices.jl](https://github.com/chriselrod/PaddedMatrices.jl)
