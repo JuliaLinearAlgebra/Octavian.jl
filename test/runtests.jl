@@ -9,7 +9,7 @@ import Random
 import Test
 import VectorizationBase
 
-using Test: @testset, @test, @test_throws
+using Test: @testset, @test, @test_throws, @inferred
 
 include("test_suite_preamble.jl")
 
