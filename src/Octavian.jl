@@ -16,7 +16,11 @@ using ThreadingUtilities:
     SPIN, WAIT, TASK, LOCK, STUP, taskpointer,
     wake_thread!, __wait, load, store!
 
-export matmul!, matmul_serial!, matmul, matmul_serial, StaticInt
+export StaticInt
+export matmul!
+export matmul
+export matmul_serial!
+export matmul_serial
 
 include("global_constants.jl")
 include("types.jl")
