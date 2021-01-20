@@ -1,5 +1,6 @@
 import Octavian
 
+import Aqua
 import BenchmarkTools
 import InteractiveUtils
 import LinearAlgebra
@@ -19,9 +20,6 @@ include("test_suite_preamble.jl")
 
 Random.seed!(123)
 
-using Aqua: test_all
-test_all(Octavian)
-
 include("utils.jl")
 include("block_sizes.jl")
 include("init.jl")
@@ -30,4 +28,8 @@ include("matmul_coverage.jl")
 
 if !coverage
     include("matmul.jl")
+end
+
+@testset "Aqua.jl" begin
+    Aqua.test_all(Octavian)
 end
