@@ -223,7 +223,7 @@ Splits both `M` and `N` into blocks when trying to spawn a large number of threa
     
     Miter = clamp(div_fast(M, W*StaticInt{mᵣ}() * MᵣW_mul_factor), 1, _nspawn)
     nspawn = div_fast(_nspawn, Miter)
-    Niter = if (nspawn ≤ 1) & (Miter < _nspawn)
+    if (nspawn ≤ 1) & (Miter < _nspawn)
         # rebalance Miter
         Miter = cld_fast(_nspawn, cld_fast(_nspawn, Miter))
         nspawn = div_fast(_nspawn, Miter)
