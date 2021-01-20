@@ -1,9 +1,10 @@
 @inline cld_fast(x, y) = cld(x, y)
-@inline function cld_fast(x::I, y) where {I <: Integer}
+@inline function cld_fast(x::I, y) where {I <: Base.BitInteger}
     d = div_fast(x, y)
     (d + (d * unsigned(y) != unsigned(x))) % I
 end
-cld_fast(::StaticInt{N}, ::StaticInt{M}) where {N,M}= (StaticInt{N}() + StaticInt{M}() + One()) ÷ StaticInt{M}()
+@inline cld_fast(::StaticInt{N}, y) where {N} = cld_fast(N, y)
+cld_fast(::StaticInt{N}, ::StaticInt{M}) where {N,M}= (StaticInt{N}() + StaticInt{M}() - One()) ÷ StaticInt{M}()
 @inline function divrem_fast(x::I, y) where {I <: Integer}
     ux = unsigned(x); uy = unsigned(y)
     d = Base.udiv_int(ux, uy)

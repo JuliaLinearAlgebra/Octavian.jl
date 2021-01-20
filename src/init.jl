@@ -5,9 +5,8 @@ function __init__()
     if nt < NUM_CORES && ("SUPPRESS_OCTAVIAN_WARNING" ∉ keys(ENV))
         msg = string(
             "Your system has $NUM_CORES physical cores, but `Octavian.jl` only has ",
-            "$(nt > 1 ? "$(nt) threads" : "1 thread") available.",
+            "$(nt > 1 ? "$(nt) threads" : "$(nt) thread") available. ",
             "For the best performance, you should start Julia with at least $(NUM_CORES) threads.",
-            "",
         )
         @warn msg
     end
