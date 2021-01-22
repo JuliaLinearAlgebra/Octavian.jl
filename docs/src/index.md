@@ -11,7 +11,12 @@ matrix multiplication, built on top of
 The source code for Octavian is available in the
 [GitHub repository](https://github.com/JuliaLinearAlgebra/Octavian.jl).
 
+## Related Packages
+
 You may also be interested in:
-- [Tullio.jl](https://github.com/mcabbott/Tullio.jl)
-- [Gaius.jl](https://github.com/MasonProtter/Gaius.jl)
-- [PaddedMatrices.jl](https://github.com/chriselrod/PaddedMatrices.jl)
+1. [Tullio.jl](https://github.com/mcabbott/Tullio.jl)
+2. [Gaius.jl](https://github.com/MasonProtter/Gaius.jl)
+
+In general:
+- Octavian is the most performant.
+- Tullio is the most flexible.
