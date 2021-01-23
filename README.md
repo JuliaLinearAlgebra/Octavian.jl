@@ -24,7 +24,3 @@ matrix multiplication, built on top of
 
 Please see the
 [Octavian documentation](https://JuliaLinearAlgebra.github.io/Octavian.jl/stable).
-
-You may also be interested in:
-1. [Tullio.jl](https://github.com/mcabbott/Tullio.jl)
-2. [Gaius.jl](https://github.com/MasonProtter/Gaius.jl)
