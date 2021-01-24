@@ -80,7 +80,7 @@ hours = 60.0*60.0; days = 24hours;
 init = [Octavian.W₁Default, Octavian.W₂Default, Octavian.R₁Default, Octavian.R₂Default]
 
 opt = Optim.optimize(
-    matmul_objective, init, ParticleSwarm(lower = [0.001, 0.01, 0.3, 0.4], upper = [0.1, 2.0, 0.9, 0.99]),
+    matmul_objective, init, ParticleSwarm(lower = [0.001, 0.01, 0.3, 0.4], upper = [0.2, 2.0, 0.9, 0.99]),
     Optim.Options(iterations = 10^6, time_limit = 8hours)
 );
 
