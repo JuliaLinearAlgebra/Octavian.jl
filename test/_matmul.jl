@@ -15,14 +15,14 @@
                 B′ = permutedims(B)'
                 AB = A * B;
                 @info "" T n k m
-                @test @time(Octavian.matmul(A, B)) == AB
-                @test @time(Octavian.matmul(A′, B)) == AB
-                @test @time(Octavian.matmul(A, B′)) == AB
-                @test @time(Octavian.matmul(A′, B′)) == AB
-                @test @time(Octavian.matmul_serial(A, B)) == AB
-                @test @time(Octavian.matmul_serial(A′, B)) == AB
-                @test @time(Octavian.matmul_serial(A, B′)) == AB
-                @test @time(Octavian.matmul_serial(A′, B′)) == AB
+                @test @time(Octavian.matmul(A, B)) ≈ AB
+                @test @time(Octavian.matmul(A′, B)) ≈ AB
+                @test @time(Octavian.matmul(A, B′)) ≈ AB
+                @test @time(Octavian.matmul(A′, B′)) ≈ AB
+                @test @time(Octavian.matmul_serial(A, B)) ≈ AB
+                @test @time(Octavian.matmul_serial(A′, B)) ≈ AB
+                @test @time(Octavian.matmul_serial(A, B′)) ≈ AB
+                @test @time(Octavian.matmul_serial(A′, B′)) ≈ AB
             end
         end
     end
@@ -49,14 +49,14 @@ end
                 B′ = permutedims(B)'
                 AB = A * B;
                 @info "" T n k m
-                @test @time(Octavian.matmul(A, B)) == AB
-                @test @time(Octavian.matmul(A′, B)) == AB
-                @test @time(Octavian.matmul(A, B′)) == AB
-                @test @time(Octavian.matmul(A′, B′)) == AB
-                @test @time(Octavian.matmul_serial(A, B)) == AB
-                @test @time(Octavian.matmul_serial(A′, B)) == AB
-                @test @time(Octavian.matmul_serial(A, B′)) == AB
-                @test @time(Octavian.matmul_serial(A′, B′)) == AB
+                @test @time(Octavian.matmul(A, B)) ≈ AB
+                @test @time(Octavian.matmul(A′, B)) ≈ AB
+                @test @time(Octavian.matmul(A, B′)) ≈ AB
+                @test @time(Octavian.matmul(A′, B′)) ≈ AB
+                @test @time(Octavian.matmul_serial(A, B)) ≈ AB
+                @test @time(Octavian.matmul_serial(A′, B)) ≈ AB
+                @test @time(Octavian.matmul_serial(A, B′)) ≈ AB
+                @test @time(Octavian.matmul_serial(A′, B′)) ≈ AB
             end
         end
     end
@@ -83,14 +83,14 @@ end
                 B′ = permutedims(B)'
                 AB = A * B;
                 @info "" T n k m
-                @test @time(Octavian.matmul(A, B)) == AB
-                @test @time(Octavian.matmul(A′, B)) == AB
-                @test @time(Octavian.matmul(A, B′)) == AB
-                @test @time(Octavian.matmul(A′, B′)) == AB
-                @test @time(Octavian.matmul_serial(A, B)) == AB
-                @test @time(Octavian.matmul_serial(A′, B)) == AB
-                @test @time(Octavian.matmul_serial(A, B′)) == AB
-                @test @time(Octavian.matmul_serial(A′, B′)) == AB
+                @test @time(Octavian.matmul(A, B)) ≈ AB
+                @test @time(Octavian.matmul(A′, B)) ≈ AB
+                @test @time(Octavian.matmul(A, B′)) ≈ AB
+                @test @time(Octavian.matmul(A′, B′)) ≈ AB
+                @test @time(Octavian.matmul_serial(A, B)) ≈ AB
+                @test @time(Octavian.matmul_serial(A′, B)) ≈ AB
+                @test @time(Octavian.matmul_serial(A, B′)) ≈ AB
+                @test @time(Octavian.matmul_serial(A′, B′)) ≈ AB
             end
         end
     end
@@ -117,14 +117,14 @@ end
                 B′ = permutedims(B)'
                 AB = A * B;
                 @info "" T n k m
-                @test @time(Octavian.matmul(A, B)) == AB
-                @test @time(Octavian.matmul(A′, B)) == AB
-                @test @time(Octavian.matmul(A, B′)) == AB
-                @test @time(Octavian.matmul(A′, B′)) == AB
-                @test @time(Octavian.matmul_serial(A, B)) == AB
-                @test @time(Octavian.matmul_serial(A′, B)) == AB
-                @test @time(Octavian.matmul_serial(A, B′)) == AB
-                @test @time(Octavian.matmul_serial(A′, B′)) == AB
+                @test @time(Octavian.matmul(A, B)) ≈ AB
+                @test @time(Octavian.matmul(A′, B)) ≈ AB
+                @test @time(Octavian.matmul(A, B′)) ≈ AB
+                @test @time(Octavian.matmul(A′, B′)) ≈ AB
+                @test @time(Octavian.matmul_serial(A, B)) ≈ AB
+                @test @time(Octavian.matmul_serial(A′, B)) ≈ AB
+                @test @time(Octavian.matmul_serial(A, B′)) ≈ AB
+                @test @time(Octavian.matmul_serial(A′, B′)) ≈ AB
             end
         end
     end
