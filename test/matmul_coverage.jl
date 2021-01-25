@@ -15,7 +15,7 @@ function matmul_pack_ab!(C, A, B)
         else
             Octavian.matmul_st_pack_A_and_B!(
                 zc, za, zb, Octavian.StaticInt{1}(), Octavian.StaticInt{0}(), M, K, N,
-                Octavian.W₁Default(), Octavian.W₂Default(), Octavian.R₁Default(), Octavian.R₂Default(), 1
+                Octavian.W₁Default(), Octavian.W₂Default(), Octavian.R₁Default(), Octavian.R₂Default(), 0
             )
         end
     end

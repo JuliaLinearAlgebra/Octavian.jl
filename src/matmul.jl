@@ -43,7 +43,7 @@ function matmul_st_pack_A_and_B!(
         solve_block_sizes(T, M, K, N, W₁, W₂, R₁, R₂, mᵣ)
 
     bcache = _use_bcache(tid)
-    L3ptr = Base.unsafe_convert(Ptr{T}, bcache)
+    L3ptr = Base.unsafe_convert(Ptr{T}, pointer(bcache))
     for n ∈ CloseOpen(Niter)
         nsize = ifelse(n < Nrem, Nblock_Nrem, Nblock)
         let A = A, B = B
@@ -175,7 +175,7 @@ function matmul_st_pack_dispatcher!(pC::AbstractStridedPointer{T}, pA, pB, α, �
     elseif notnested === nothing ? iszero(ccall(:jl_in_threaded_region, Cint, ())) : notnested
         matmul_st_pack_A_and_B!(pC, pA, pB, α, β, M, K, N, W₁Default(), W₂Default(), R₁Default(), R₂Default(), nothing)
     else
-        matmul_st_pack_A_and_B!(pC, pA, pB, α, β, M, K, N, W₁Default(), W₂Default(), R₁Default(), R₂Default/Threads.nthreads(), Threads.threadid())
+        matmul_st_pack_A_and_B!(pC, pA, pB, α, β, M, K, N, W₁Default(), W₂Default(), R₁Default(), R₂Default/Threads.nthreads(), Threads.threadid() - 1)
     end
     nothing
 end
