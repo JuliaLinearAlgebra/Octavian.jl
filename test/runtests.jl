@@ -13,7 +13,7 @@ using Test: @testset, @test, @test_throws, @inferred
 
 include("test_suite_preamble.jl")
 
-@info("VectorizationBase.NUM_CORES is $(VectorizationBase.NUM_CORES)")
+@info("VectorizationBase.num_cores() is $(VectorizationBase.num_cores())")
 @info("Octavian.OCTAVIAN_NUM_TASKS[] is $(Octavian.OCTAVIAN_NUM_TASKS[]) tasks")
 
 Random.seed!(123)

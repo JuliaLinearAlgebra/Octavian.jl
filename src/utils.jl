@@ -30,12 +30,13 @@ function default_stridedpointer_quote(::Type{T}, N, Ot) where {T}
     xt = Expr(:tuple)
     st = Expr(:call, Expr(:curly, :StaticInt, sizeof(T)))
     for n ∈ 1:N
-        push!(xt.args, Expr(:call, :*, st, Expr(:ref, :x, n)))
+        push!(xt.args, Expr(:call, :*, :st, Expr(:ref, :x, n)))
         push!(R.args, n)
         push!(o.args, Expr(:call, Ot))
     end
     quote
         $(Expr(:meta,:inline))
+        st = $st
         StridedPointer{$T,$N,$C,$B,$R}(ptr, $xt, $o)
     end
 end

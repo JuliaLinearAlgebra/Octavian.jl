@@ -15,11 +15,11 @@ function (::LoopMulFunc{P,TC,TA,TB,Α,Β,Md,Kd,Nd})(p::Ptr{UInt}) where {P,TC,TA
 end
 @inline _call_loopmul!(C, A, B, α, β, M, K, N, ::Val{false}) = loopmul!(C, A, B, α, β, M, K, N)
 @inline function _call_loopmul!(C::StridedPointer{T}, A, B, α, β, M, K, N, ::Val{true}) where {T}
-    if M*K < first_effective_cache(T) * R₂Default
+    if M*K < first_cache_size(T) * R₂Default()
         packaloopmul!(C, A, B, α, β, M, K, N)
         return
     else
-        matmul_st_only_pack_A!(C, A, B, α, β, M, K, N, StaticFloat{W₁Default}(), StaticFloat{W₂Default}(), StaticFloat{R₁Default}(), StaticFloat{R₂Default}())
+        matmul_st_only_pack_A!(C, A, B, α, β, M, K, N, W₁Default(), W₂Default(), R₁Default(), R₂Default())
         return
     end
 end

@@ -226,10 +226,9 @@ end
    end
 end
 @inline function alloc_a_pack(A, M, ::Type{T}) where {T}
-    # buffer = Vector{T}(undef, FIRST__CACHE_SIZE ÷ sizeof(T))
     buffer = first_cache_buffer(T)
     bufferptr = if Sys.WORD_SIZE == 32
-        reinterpret(Ptr{T}, buffer) # Base.unsafe_convert(Ptr{T}, buffer)
+        buffer
     else
         align(pointer(buffer))
     end
@@ -244,7 +243,7 @@ end
 ) where {T}
     Ãₚ, buffer = alloc_a_pack(A, M, T)
     GC.@preserve buffer begin
-        Nᵣ = StaticInt{nᵣ}()
+        Mᵣ, Nᵣ = matmul_params()
         packamul!(C, Ãₚ, A, B, α, β, M, K, Nᵣ)
         loopmul!(gesp(C, (Zero(), Nᵣ)), Ãₚ, gesp(B, (Zero(), Nᵣ)), α, β, M, K, N - Nᵣ)
     end

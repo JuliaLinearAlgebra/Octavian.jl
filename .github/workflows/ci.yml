@@ -109,10 +109,13 @@ jobs:
             using Pkg
             Pkg.develop(PackageSpec(path=pwd()))
             Pkg.instantiate()'
+        env:
+          JULIA_PKG_SERVER: ""
       - run: julia --project=docs docs/make.jl
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
+          JULIA_PKG_SERVER: ""
   doctests:
     name: Doctests
     runs-on: ubuntu-latest
@@ -126,8 +129,12 @@ jobs:
             using Pkg
             Pkg.develop(PackageSpec(path=pwd()))
             Pkg.instantiate()'
+        env:
+          JULIA_PKG_SERVER: ""
       - run: |
           julia --project=docs -e '
             using Documenter: doctest
             using Octavian
             doctest(Octavian)'
+        env:
+          JULIA_PKG_SERVER: ""

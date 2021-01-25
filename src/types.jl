@@ -11,7 +11,7 @@ struct StaticFloat{N} <: AbstractFloat
 end
 
 struct BCache{T<:Union{UInt,Nothing}}
-    p::Ptr{UInt8}
+    p::Ptr{Cvoid}
     i::T
 end
 
