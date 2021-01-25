@@ -9,12 +9,13 @@ function matmul_pack_ab!(C, A, B)
     GC.@preserve C A B begin
         if nspawn > 1
             Octavian.matmul_pack_A_and_B!(
-                zc, za, zb, StaticInt{1}(), StaticInt{0}(), M, K, N, nspawn,
+                zc, za, zb, Octavian.StaticInt{1}(), Octavian.StaticInt{0}(), M, K, N, nspawn,
                 Octavian.W₁Default(), Octavian.W₂Default(), Octavian.R₁Default(), Octavian.R₂Default()
             )
         else
             Octavian.matmul_st_pack_A_and_B!(
-                zc, za, zb, StaticInt{1}(), StaticInt{0}(), M, K, N, Octavian.W₁Default(), Octavian.W₂Default(), Octavian.R₁Default(), Octavian.R₂Default(), 1
+                zc, za, zb, Octavian.StaticInt{1}(), Octavian.StaticInt{0}(), M, K, N,
+                Octavian.W₁Default(), Octavian.W₂Default(), Octavian.R₁Default(), Octavian.R₂Default(), 1
             )
         end
     end
