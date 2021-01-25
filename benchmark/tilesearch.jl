@@ -5,7 +5,7 @@ using Octavian: StaticFloat
 function matmul_pack_ab!(C, A, B, ::Val{W₁}, ::Val{W₂}, ::Val{R₁}, ::Val{R₂}) where {W₁, W₂, R₁, R₂}
     M, N = size(C); K = size(B,1)
     zc, za, zb = Octavian.zstridedpointer.((C,A,B))
-    nspawn = min(Threads.nthreads(), VectorizationBase.NUM_CORES)
+    nspawn = min(Threads.nthreads(), VectorizationBase.num_cores())
     @elapsed(
         Octavian.matmul_pack_A_and_B!(
             zc, za, zb, StaticInt{1}(), StaticInt{0}(), M, K, N, nspawn,
@@ -60,8 +60,8 @@ end
 
 
 T = Float64
-min_size = round(Int, sqrt(0.65 * Octavian.VectorizationBase.CACHE_SIZE[3] / sizeof(T)))
-max_size = round(Int, sqrt( 32  * Octavian.VectorizationBase.CACHE_SIZE[3] / sizeof(T)))
+min_size = round(Int, sqrt(0.65 * Octavian.VectorizationBase.cache_size(Val(3)) / sizeof(T)))
+max_size = round(Int, sqrt( 32  * Octavian.VectorizationBase.cache_size(Val(3)) / sizeof(T)))
 
 SR = size_range(max_size, min_size, 100);
 const CsConst, AsConst, BsConst = matrix_range(SR, T);
@@ -77,7 +77,7 @@ end
 
 using Optim
 hours = 60.0*60.0; days = 24hours;
-init = [Octavian.W₁Default, Octavian.W₂Default, Octavian.R₁Default, Octavian.R₂Default]
+init = Float64[Octavian.W₁Default(), Octavian.W₂Default(), Octavian.R₁Default(), Octavian.R₂Default()]
 
 opt = Optim.optimize(
     matmul_objective, init, ParticleSwarm(lower = [0.001, 0.01, 0.3, 0.4], upper = [0.2, 2.0, 0.9, 0.99]),

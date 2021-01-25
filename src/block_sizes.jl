@@ -1,26 +1,25 @@
 
-first_effective_cache(::Type{T}) where {T} = StaticInt{FIRST__CACHE_SIZE}() ÷ static_sizeof(T)
-second_effective_cache(::Type{T}) where {T} = StaticInt{SECOND_CACHE_SIZE}() ÷ static_sizeof(T)
 
 function block_sizes(::Type{T}, _α, _β, R₁, R₂) where {T}
-    W = VectorizationBase.pick_vector_width_val(T)
+    W = pick_vector_width_val(T)
     α = _α * W
     β = _β * W
-    L₁ₑ = first_effective_cache(T) * R₁
-    L₂ₑ = second_effective_cache(T) * R₂
+    L₁ₑ = first_cache_size(T) * R₁
+    L₂ₑ = second_cache_size(T) * R₂
     block_sizes(W, α, β, L₁ₑ, L₂ₑ)
 end
 function block_sizes(W, α, β, L₁ₑ, L₂ₑ)
-    MᵣW = StaticInt{mᵣ}() * W
+    mᵣ, nᵣ = matmul_params()
+    MᵣW = mᵣ * W
     
     Mc = floortostaticint(√(L₁ₑ)*√(L₁ₑ*β + L₂ₑ*α)/√(L₂ₑ) / MᵣW) * MᵣW
     Kc = roundtostaticint(√(L₁ₑ)*√(L₂ₑ)/√(L₁ₑ*β + L₂ₑ*α))
-    Nc = floortostaticint(√(L₂ₑ)*√(L₁ₑ*β + L₂ₑ*α)/√(L₁ₑ) / StaticInt{nᵣ}()) * StaticInt{nᵣ}()
+    Nc = floortostaticint(√(L₂ₑ)*√(L₁ₑ*β + L₂ₑ*α)/√(L₁ₑ) / nᵣ) * nᵣ
 
     Mc, Kc, Nc
 end
 function block_sizes(::Type{T}) where {T}
-    block_sizes(T, StaticFloat{W₁Default}(), StaticFloat{W₂Default}(), StaticFloat{R₁Default}(), StaticFloat{R₂Default}())
+    block_sizes(T, W₁Default(), W₂Default(), R₁Default(), R₂Default())
 end
 
 """
@@ -159,11 +158,11 @@ Note that for synchronization on `B`, all threads must have the same values for 
 independently of `M`, this algorithm guarantees all threads are on the same page.
 """
 @inline function solve_block_sizes(::Type{T}, M, K, N, _α, _β, R₂, R₃, Wfactor) where {T}
-    W = VectorizationBase.pick_vector_width_val(T)
+    W = pick_vector_width_val(T)
     α = _α * W
     β = _β * W
-    L₁ₑ =  first_effective_cache(T) * R₂
-    L₂ₑ = second_effective_cache(T) * R₃
+    L₁ₑ =  first_cache_size(T) * R₂
+    L₂ₑ = second_cache_size(T) * R₃
 
     # Nc_init = round(Int, √(L₂ₑ)*√(α * L₂ₑ + β * L₁ₑ)/√(L₁ₑ))
     Nc_init⁻¹ = √(L₁ₑ) / (√(L₂ₑ)*√(α * L₂ₑ + β * L₁ₑ))
@@ -178,11 +177,11 @@ independently of `M`, this algorithm guarantees all threads are on the same page
 end
 # Takes Nc, calcs Mc and Kc
 @inline function solve_McKc(::Type{T}, M, K, Nc, _α, _β, R₂, R₃, Wfactor) where {T}
-    W = VectorizationBase.pick_vector_width_val(T)
+    W = pick_vector_width_val(T)
     α = _α * W
     β = _β * W
-    L₁ₑ =  first_effective_cache(T) * R₂
-    L₂ₑ = second_effective_cache(T) * R₃
+    L₁ₑ =  first_cache_size(T) * R₂
+    L₂ₑ = second_cache_size(T) * R₃
 
     Kc_init⁻¹ = Base.FastMath.max_fast(√(α/L₁ₑ), Nc*inv(L₂ₑ))
     Kiter = cldapproxi(K, Kc_init⁻¹) # approximate `ceil`
@@ -201,17 +200,18 @@ end
 """
   find_first_acceptable(M, W)
 
-Finds first combination of `Miter` and `Niter` that doesn't make `M` too small while producing `Miter * Niter = NUM_CORES`.
+Finds first combination of `Miter` and `Niter` that doesn't make `M` too small while producing `Miter * Niter = num_cores()`.
 This would be awkard if there are computers with prime numbers of cores. I should probably consider that possibility at some point.
 """
 @inline function find_first_acceptable(M, W)
-    Mᵣ = StaticInt{mᵣ}() * W
-    for (miter,niter) ∈ CORE_FACTORS
-        if miter * ((MᵣW_mul_factor - One()) * Mᵣ) ≤ M + (W + W)
+    Mᵣ, Nᵣ = matmul_params()
+    factors = calc_factors()
+    for (miter, niter) ∈ factors
+        if miter * ((MᵣW_mul_factor() - One()) * Mᵣ) ≤ M + (W + W)
             return miter, niter
         end
     end
-    last(CORE_FACTORS)
+    last(factors)
 end
 """
   divide_blocks(M, Ntotal, _nspawn, W)
@@ -219,9 +219,9 @@ end
 Splits both `M` and `N` into blocks when trying to spawn a large number of threads relative to the size of the matrices.
 """
 @inline function divide_blocks(M, Ntotal, _nspawn, W)
-    _nspawn == NUM_CORES && return find_first_acceptable(M, W)
-    
-    Miter = clamp(div_fast(M, W*StaticInt{mᵣ}() * MᵣW_mul_factor), 1, _nspawn)
+    _nspawn == num_cores() && return find_first_acceptable(M, W)
+    mᵣ, nᵣ = matmul_params()
+    Miter = clamp(div_fast(M, W*mᵣ * MᵣW_mul_factor()), 1, _nspawn)
     nspawn = div_fast(_nspawn, Miter)
     if (nspawn ≤ 1) & (Miter < _nspawn)
         # rebalance Miter

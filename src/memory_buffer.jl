@@ -15,16 +15,16 @@ end
 
 if Sys.WORD_SIZE == 32
     @inline function first_cache_buffer(::Type{T}) where {T}
-        ACACHEPTR[] + Threads.threadid() * FIRST__CACHE_SIZE - FIRST__CACHE_SIZE
+        reinterpret(Ptr{T}, ACACHEPTR[] + Threads.threadid() * first_cache_size() - first_cache_size())
     end
 else
     @inline function first_cache_buffer(::Type{T}) where {T}
-        MemoryBuffer{T}(undef, StaticInt{FIRST__CACHE_SIZE}() ÷ static_sizeof(T))
+        MemoryBuffer{T}(undef, first_cache_size(T))
     end
 end
 
-BCache(i::Integer) = BCache(pointer(BCACHE)+cld_fast(SECOND_CACHE_SIZE*i,Threads.nthreads()), i % UInt)
-BCache(::Nothing) = BCache(pointer(BCACHE), nothing)
+BCache(i::Integer) = BCache(BCACHEPTR[]+cld_fast(second_cache_size()*i, Threads.nthreads()), i % UInt)
+BCache(::Nothing) = BCache(BCACHEPTR[], nothing)
 
 @inline Base.pointer(b::BCache) = b.p
 @inline Base.unsafe_convert(::Type{Ptr{T}}, b::BCache) where {T} = Base.unsafe_convert(Ptr{T}, b.p)

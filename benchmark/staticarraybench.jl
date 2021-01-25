@@ -63,14 +63,14 @@ rename!(df, matmulmethodnames);
 df.Size = sizerange
 
 function pick_suffix(desc = "")
-    suffix = if Octavian.VectorizationBase.AVX512F
+    suffix = if Octavian.VectorizationBase.has_feature("x86_64_avx512f")
         "AVX512"
-    elseif Octavian.VectorizationBase.AVX2
+    elseif Octavian.VectorizationBase.has_feature("x86_64_avx2")
         "AVX2"
-    elseif Octavian.VectorizationBase.REGISTER_SIZE == 32
+    elseif Octavian.VectorizationBase.has_feature("x86_64_avx")
         "AVX"
     else
-        "REGSUZE$(Octavian.VectorizationBase.REGISTER_SIZE)"
+        "REGSIZE$(Octavian.VectorizationBase.register_size())"
     end
     if desc != ""
         suffix *= '_' * desc

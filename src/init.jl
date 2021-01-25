@@ -2,11 +2,11 @@ function __init__()
     init_acache()
     init_bcache()
     nt = init_num_tasks()
-    if nt < NUM_CORES && ("SUPPRESS_OCTAVIAN_WARNING" ∉ keys(ENV))
+    if nt < num_cores() && ("SUPPRESS_OCTAVIAN_WARNING" ∉ keys(ENV))
         msg = string(
-            "Your system has $NUM_CORES physical cores, but `Octavian.jl` only has ",
+            "Your system has $(num_cores()) physical cores, but `Octavian.jl` only has ",
             "$(nt > 1 ? "$(nt) threads" : "$(nt) thread") available. ",
-            "For the best performance, you should start Julia with at least $(NUM_CORES) threads.",
+            "For the best performance, you should start Julia with at least $(num_cores()) threads.",
         )
         @warn msg
     end
@@ -14,13 +14,13 @@ function __init__()
 end
 
 function init_bcache()
-    resize!(BCACHE, SECOND_CACHE_SIZE * BCACHE_COUNT); nothing
+    BCACHEPTR[] = VectorizationBase.valloc(second_cache_size() * bcache_count(), Cvoid, ccall(:jl_getpagesize, Int, ()))
+    nothing
 end
 
 function init_acache()
     Sys.WORD_SIZE ≤ 32 || return
-    resize!(ACACHE, FIRST__CACHE_SIZE * init_num_tasks() + 4095)
-    ACACHEPTR[] = align(pointer(ACACHE), 4096)
+    ACACHEPTR[] = VectorizationBase.valloc(first_cache_size() * init_num_tasks(), Cvoid, ccall(:jl_getpagesize, Int, ()))
     nothing
 end
 
@@ -31,7 +31,7 @@ end
 
 function _read_environment_num_tasks()
     environment_variable = get(ENV, "OCTAVIAN_NUM_TASKS", "")::String
-    nt = min(Threads.nthreads(), VectorizationBase.NUM_CORES)::Int
+    nt = min(Threads.nthreads(), VectorizationBase.num_cores())::Int
     if isempty(environment_variable)
         return nt
     else
