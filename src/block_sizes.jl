@@ -207,7 +207,7 @@ This would be awkard if there are computers with prime numbers of cores. I shoul
     Mᵣ, Nᵣ = matmul_params()
     factors = calc_factors()
     for (miter, niter) ∈ factors
-        if miter * ((MᵣW_mul_factor() - One()) * Mᵣ) ≤ M + (W + W)
+        if miter * (StaticInt(2) * Mᵣ * W) ≤ M + (W + W)
             return miter, niter
         end
     end
