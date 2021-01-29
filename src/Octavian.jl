@@ -7,8 +7,7 @@ using VectorizationBase: align, AbstractStridedPointer, zstridedpointer,
     snum_cache_levels, scache_size, snum_cores, num_cores, cache_inclusivity, scacheline_size
 using LoopVectorization: maybestaticsize, matmul_params, preserve_buffer, CloseOpen
 using ArrayInterface: StaticInt, Zero, One, OptionallyStaticUnitRange, size, strides, offsets, indices,
-    static_length, static_first, static_last, axes,
-    dense_dims, DenseDims, stride_rank, StrideRank
+    static_length, static_first, static_last, axes, dense_dims, stride_rank
 
 using ThreadingUtilities:
     _atomic_add!, _atomic_umax!, _atomic_umin!,
