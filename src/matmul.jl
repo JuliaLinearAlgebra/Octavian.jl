@@ -74,7 +74,7 @@ function matmul_st_pack_A_and_B!(
     nothing
 end
 
-@inline contiguousstride1(A) = ArrayInterface.contiguous_axis(A) === ArrayInterface.Contiguous{1}()
+@inline contiguousstride1(A) = ArrayInterface.contiguous_axis(A) === One()
 @inline contiguousstride1(A::AbstractStridedPointer{T,N,1}) where {T,N} = true
 # @inline bytestride(A::AbstractArray, i) = VectorizationBase.bytestrides(A)[i]
 @inline bytestride(A::AbstractStridedPointer, i) = strides(A)[i]
@@ -125,11 +125,11 @@ end
 @inline function matmul_serial!(C::AbstractMatrix, A::AbstractMatrix, B::AbstractMatrix, α, β)
     matmul_serial!(C, A, B, α, β, nothing, ArrayInterface.contiguous_axis(C))
 end
-@inline function matmul_serial!(C::AbstractMatrix, A::AbstractMatrix, B::AbstractMatrix, α, β, MKN, ::ArrayInterface.Contiguous{2})
+@inline function matmul_serial!(C::AbstractMatrix, A::AbstractMatrix, B::AbstractMatrix, α, β, MKN, ::StaticInt{2})
     _matmul_serial!(C', B', A', α, β, nothing)
     return C
 end
-@inline function matmul_serial!(C::AbstractMatrix, A::AbstractMatrix, B::AbstractMatrix, α, β, MKN, ::ArrayInterface.Contiguous)
+@inline function matmul_serial!(C::AbstractMatrix, A::AbstractMatrix, B::AbstractMatrix, α, β, MKN, ::StaticInt)
     _matmul_serial!(C, A, B, α, β, nothing)
     return C
 end
@@ -210,11 +210,11 @@ end
 @inline function matmul!(C::AbstractMatrix, A::AbstractMatrix, B::AbstractMatrix, α, β, nthread)
     matmul!(C, A, B, α, β, nthread, nothing, ArrayInterface.contiguous_axis(C))
 end
-@inline function matmul!(C::AbstractMatrix, A::AbstractMatrix, B::AbstractMatrix, α, β, nthread, MKN, ::ArrayInterface.Contiguous{2})
+@inline function matmul!(C::AbstractMatrix, A::AbstractMatrix, B::AbstractMatrix, α, β, nthread, MKN, ::StaticInt{2})
     _matmul!(C', B', A', α, β, nthread, MKN)
     return C
 end
-@inline function matmul!(C::AbstractMatrix, A::AbstractMatrix, B::AbstractMatrix, α, β, nthread, MKN, ::ArrayInterface.Contiguous)
+@inline function matmul!(C::AbstractMatrix, A::AbstractMatrix, B::AbstractMatrix, α, β, nthread, MKN, ::StaticInt)
     _matmul!(C, A, B, α, β, nthread, MKN)
     return C
 end
