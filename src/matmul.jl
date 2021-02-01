@@ -168,13 +168,12 @@ Otherwise, based on the array's size, whether they are transposed, and whether t
     end
 end # function
 
-function matmul_st_pack_dispatcher!(pC::AbstractStridedPointer{T}, pA, pB, α, β, M, K, N, notnested::Union{Nothing,Bool} = nothing) where {T}
+function matmul_st_pack_dispatcher!(pC::AbstractStridedPointer{T}, pA, pB, α, β, M, K, N) where {T}
     Mc, Kc, Nc = block_sizes(T)
     if (contiguousstride1(pB) ? (Kc * Nc ≥ K * N) : (firstbytestride(pB) ≤ 1600))
         matmul_st_only_pack_A!(pC, pA, pB, α, β, M, K, N, W₁Default(), W₂Default(), R₁Default(), R₂Default())
-    # elseif notnested === nothing ? iszero(ccall(:jl_in_threaded_region, Cint, ())) : notnested
-    elseif notnested !== nothing && notnested
-        matmul_st_pack_A_and_B!(pC, pA, pB, α, β, M, K, N, W₁Default(), W₂Default(), R₁Default(), R₂Default(), nothing)
+    # elseif notnested !== nothing && notnested
+    #     matmul_st_pack_A_and_B!(pC, pA, pB, α, β, M, K, N, W₁Default(), W₂Default(), R₁Default(), R₂Default(), nothing)
     else
         matmul_st_pack_A_and_B!(pC, pA, pB, α, β, M, K, N, W₁Default(), W₂Default(), R₁Default(), R₂Default()/Threads.nthreads(), Threads.threadid() - 1)
     end
@@ -298,10 +297,8 @@ function __matmul!(
     # Maybe this is nested, or we have ≤ 1 threads
     nt = _nthreads()
     _nthread = nthread === nothing ? nt : min(nt, nthread)
-    # not_in_threaded = iszero(ccall(:jl_in_threaded_region, Cint, ()))
-    # if (!not_in_threaded) | (_nthread ≤ 1)
     if _nthread < 2
-        matmul_st_pack_dispatcher!(C, A, B, α, β, M, K, N, not_in_threaded)
+        matmul_st_pack_dispatcher!(C, A, B, α, β, M, K, N)
         return
     end
     # We are threading, but how many threads?
