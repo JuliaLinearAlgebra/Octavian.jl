@@ -23,6 +23,7 @@ include("init.jl")
 include("integer_division.jl")
 include("macrokernels.jl")
 include("matmul_coverage.jl")
+include("staticnumbers.jl")
 include("utils.jl")
 
 if !coverage

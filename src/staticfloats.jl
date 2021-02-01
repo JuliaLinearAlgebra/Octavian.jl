@@ -1,3 +1,5 @@
+Base.@pure StaticFloat(x::Float64) = StaticFloat{x}()
+Base.@pure StaticFloat(x::Int) = StaticFloat{Base.sitofp(Float64,x)}()
 Base.convert(::Type{T}, ::StaticFloat{N}) where {N,T<:AbstractFloat} = T(N)
 Base.promote_rule(::Type{StaticFloat{N}}, ::Type{T}) where {N,T} = promote_type(T, Float64)
 
