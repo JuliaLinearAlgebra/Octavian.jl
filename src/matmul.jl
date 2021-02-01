@@ -81,13 +81,13 @@ end
 @inline firstbytestride(A::AbstractStridedPointer) = bytestride(A, One())
 
 @inline function vectormultiple(bytex, ::Type{Tc}, ::Type{Ta}) where {Tc,Ta}
-    Wc = pick_vector_width_val(Tc) * static_sizeof(Ta) - One()
-    iszero(bytex & (VectorizationBase.sregister_size() - One()))
+    Wc = pick_vector_width(Tc) * static_sizeof(Ta) - One()
+    iszero(bytex & (VectorizationBase.register_size() - One()))
 end
 @inline function dontpack(pA::AbstractStridedPointer{Ta}, M, K, ::StaticInt{mc}, ::StaticInt{kc}, ::Type{Tc}) where {mc, kc, Tc, Ta}
     (contiguousstride1(pA) &&
-         ((((MᵣW_mul_factor() + StaticInt(5)) * pick_vector_width_val(Tc)) ≥ M) ||
-          (vectormultiple(bytestride(pA, StaticInt{2}()), Tc, Ta) && ((M * K) ≤ (mc * kc)) && iszero(reinterpret(Int, pointer(pA)) & (VectorizationBase.sregister_size() - One())))))
+         ((((MᵣW_mul_factor() + StaticInt(5)) * pick_vector_width(Tc)) ≥ M) ||
+          (vectormultiple(bytestride(pA, StaticInt{2}()), Tc, Ta) && ((M * K) ≤ (mc * kc)) && iszero(reinterpret(Int, pointer(pA)) & (VectorizationBase.register_size() - One())))))
 end
 
 
@@ -112,7 +112,7 @@ function maybeinline(::StaticInt{M}, ::StaticInt{N}, ::Type{T}, ::Val{true}) whe
     static_sizeof(T) * StaticInt{M}() * StaticInt{N}() < StaticInt{176}() * mᵣ * nᵣ
 end
 function maybeinline(::StaticInt{M}, ::StaticInt{N}, ::Type{T}, ::Val{false}) where {M,N,T}
-    StaticInt{M}() * static_sizeof(T) ≤ StaticInt{2}() * VectorizationBase.sregister_size()
+    StaticInt{M}() * static_sizeof(T) ≤ StaticInt{2}() * VectorizationBase.register_size()
 end
 
 
@@ -172,10 +172,11 @@ function matmul_st_pack_dispatcher!(pC::AbstractStridedPointer{T}, pA, pB, α, �
     Mc, Kc, Nc = block_sizes(T)
     if (contiguousstride1(pB) ? (Kc * Nc ≥ K * N) : (firstbytestride(pB) ≤ 1600))
         matmul_st_only_pack_A!(pC, pA, pB, α, β, M, K, N, W₁Default(), W₂Default(), R₁Default(), R₂Default())
-    elseif notnested === nothing ? iszero(ccall(:jl_in_threaded_region, Cint, ())) : notnested
+    # elseif notnested === nothing ? iszero(ccall(:jl_in_threaded_region, Cint, ())) : notnested
+    elseif notnested !== nothing && notnested
         matmul_st_pack_A_and_B!(pC, pA, pB, α, β, M, K, N, W₁Default(), W₂Default(), R₁Default(), R₂Default(), nothing)
     else
-        matmul_st_pack_A_and_B!(pC, pA, pB, α, β, M, K, N, W₁Default(), W₂Default(), R₁Default(), R₂Default/Threads.nthreads(), Threads.threadid() - 1)
+        matmul_st_pack_A_and_B!(pC, pA, pB, α, β, M, K, N, W₁Default(), W₂Default(), R₁Default(), R₂Default()/Threads.nthreads(), Threads.threadid() - 1)
     end
     nothing
 end
@@ -228,7 +229,7 @@ end
 # passing MKN directly would let osmeone skip the size check.
 @inline function _matmul!(C::AbstractMatrix{T}, A, B, α, β, nthread, MKN) where {T}#::Union{Nothing,Tuple{Vararg{Integer,3}}}) where {T}
     M, K, N = MKN === nothing ? matmul_sizes(C, A, B) : MKN
-    W = pick_vector_width_val(T)
+    W = pick_vector_width(T)
     pA = zstridedpointer(A); pB = zstridedpointer(B); pC = zstridedpointer(C);
     Cb = preserve_buffer(C); Ab = preserve_buffer(A); Bb = preserve_buffer(B);
     mᵣ, nᵣ = matmul_params()
@@ -249,7 +250,7 @@ end
 # This funciton is sort of a `pun`. It splits aggressively (it does a lot of "splitin'"), which often means it will split-N.
 function matmulsplitn!(C::AbstractStridedPointer{T}, A, B, α, β, ::StaticInt{Mc}, M, K, N, nspawn, ::Val{PACK}) where {T, Mc, PACK}
     Mᵣ, Nᵣ = matmul_params()
-    W = pick_vector_width_val(T)
+    W = pick_vector_width(T)
     MᵣW = Mᵣ*W
     _Mblocks, Nblocks = divide_blocks(M, cld_fast(N, Nᵣ), nspawn, W)
     Mbsize, Mrem, Mremfinal, Mblocks = split_m(M, _Mblocks, W)
@@ -288,7 +289,7 @@ function __matmul!(
     C::AbstractStridedPointer{T}, A::AbstractStridedPointer, B::AbstractStridedPointer, α, β, M, K, N, nthread
 ) where {T}
     Mᵣ, Nᵣ = matmul_params()
-    W = pick_vector_width_val(T)
+    W = pick_vector_width(T)
     Mc, Kc, Nc = block_sizes(T)
     MᵣW = Mᵣ*W
 
@@ -297,8 +298,9 @@ function __matmul!(
     # Maybe this is nested, or we have ≤ 1 threads
     nt = _nthreads()
     _nthread = nthread === nothing ? nt : min(nt, nthread)
-    not_in_threaded = iszero(ccall(:jl_in_threaded_region, Cint, ()))
-    if (!not_in_threaded) | (_nthread ≤ 1)
+    # not_in_threaded = iszero(ccall(:jl_in_threaded_region, Cint, ()))
+    # if (!not_in_threaded) | (_nthread ≤ 1)
+    if _nthread < 2
         matmul_st_pack_dispatcher!(C, A, B, α, β, M, K, N, not_in_threaded)
         return
     end
@@ -321,7 +323,7 @@ function __matmul!(
     # if 2M/nspawn is less than it, we don't don't `A`
     # First check is: do we just want to split aggressively?
     mᵣ, nᵣ = matmul_params()
-    if dontpack(A, M, K, Mc, Kc, T, nspawn) || (W ≥ M) || (nᵣ*((snum_cores() ≥ StaticInt(8)) ? max(nspawn,8) : 8) ≥ N)
+    if dontpack(A, M, K, Mc, Kc, T, nspawn) || (W ≥ M) || (nᵣ*((num_cores() ≥ StaticInt(8)) ? max(nspawn,8) : 8) ≥ N)
         # `nᵣ*nspawn ≥ N` is needed at the moment to avoid accidentally splitting `N` to be `< nᵣ` while packing
         # Should probably handle that with a smarter splitting function...
         matmulsplitn!(C, A, B, α, β, Mc, M, K, N, nspawn, Val{false}())
@@ -346,16 +348,16 @@ function matmul_pack_A_and_B!(
     C::AbstractStridedPointer{T}, A::AbstractStridedPointer, B::AbstractStridedPointer, α, β, M, K, N,
     tospawn::Int, ::StaticFloat{W₁}, ::StaticFloat{W₂}, ::StaticFloat{R₁}, ::StaticFloat{R₂}#, ::Val{1}
 ) where {T,W₁,W₂,R₁,R₂}
-    W = pick_vector_width_val(T)
+    W = pick_vector_width(T)
     mᵣ, nᵣ = matmul_params()
     mᵣW = mᵣ * W
     # atomicsync = Ref{NTuple{16,UInt}}()
     Mbsize, Mrem, Mremfinal, _to_spawn = split_m(M, tospawn, W) # M is guaranteed to be > W because of `W ≥ M` condition for `jmultsplitn!`...
-    atomicsync = allocref(StaticInt{2}()*snum_cores()*scacheline_size())
+    atomicsync = allocref(StaticInt{2}()*num_cores()*cache_linesize())
     p = reinterpret(Ptr{UInt}, Base.unsafe_convert(Ptr{UInt8}, atomicsync))
     GC.@preserve atomicsync begin
         for i ∈ CloseOpen(2_to_spawn)
-            _atomic_store!(p + i*scacheline_size(), zero(UInt))
+            _atomic_store!(p + i*cache_linesize(), zero(UInt))
         end
         # _atomic_umin!(p, zero(UInt)); _atomic_umin!(p + 8sizeof(UInt), zero(UInt))
         #    Mbsize, Mrem, Mremfinal, _to_spawn = split_m(M, tospawn, mᵣW) # M is guaranteed to be > W because of `W ≥ M` condition for `jmultsplitn!`...
@@ -388,10 +390,10 @@ function sync_mul!(
 
     # atomics = atomicp + 8sizeof(UInt)
     sync_iters = zero(UInt)
-    myp = atomicp +   id *scacheline_size()
-    atomicp -= scacheline_size()
-    atomics = atomicp + total_ids*scacheline_size()
-    mys = myp + total_ids*(scacheline_size() % UInt)
+    myp = atomicp +   id *cache_linesize()
+    atomicp -= cache_linesize()
+    atomics = atomicp + total_ids*cache_linesize()
+    mys = myp + total_ids*(cache_linesize() % UInt)
     Npackb_r_div, Npackb_r_rem = divrem_fast(Nblock_Nrem, total_ids)
     Npackb_r_block_rem, Npackb_r_block_ = promote(Npackb_r_div + One(), Npackb_r_div)
 
@@ -427,7 +429,7 @@ function sync_mul!(
                 sync_iters += one(UInt)
                 let atomp = atomicp
                     for _ ∈ CloseOpen(total_ids)
-                        atomp += scacheline_size()
+                        atomp += cache_linesize()
                         atomp == myp && continue
                         # while !_atomic_cas_cmp!(atomp, sync_iters, sync_iters)
                         while _atomic_load(atomp) != sync_iters
@@ -459,7 +461,7 @@ function sync_mul!(
                 _mv = _atomic_add!(mys, one(UInt))
                 let atoms = atomics
                     for _ ∈ CloseOpen(total_ids)
-                        atoms += scacheline_size()
+                        atoms += cache_linesize()
                         atoms == mys && continue
                         # while !_atomic_cas_cmp!(atoms, sync_iters, sync_iters)
                         while _atomic_load(atoms) != sync_iters
