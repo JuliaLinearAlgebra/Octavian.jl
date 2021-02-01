@@ -1,7 +1,7 @@
 
 
 function block_sizes(::Type{T}, _α, _β, R₁, R₂) where {T}
-    W = pick_vector_width_val(T)
+    W = pick_vector_width(T)
     α = _α * W
     β = _β * W
     L₁ₑ = first_cache_size(T) * R₁
@@ -158,7 +158,7 @@ Note that for synchronization on `B`, all threads must have the same values for 
 independently of `M`, this algorithm guarantees all threads are on the same page.
 """
 @inline function solve_block_sizes(::Type{T}, M, K, N, _α, _β, R₂, R₃, Wfactor) where {T}
-    W = pick_vector_width_val(T)
+    W = pick_vector_width(T)
     α = _α * W
     β = _β * W
     L₁ₑ =  first_cache_size(T) * R₂
@@ -177,7 +177,7 @@ independently of `M`, this algorithm guarantees all threads are on the same page
 end
 # Takes Nc, calcs Mc and Kc
 @inline function solve_McKc(::Type{T}, M, K, Nc, _α, _β, R₂, R₃, Wfactor) where {T}
-    W = pick_vector_width_val(T)
+    W = pick_vector_width(T)
     α = _α * W
     β = _β * W
     L₁ₑ =  first_cache_size(T) * R₂
