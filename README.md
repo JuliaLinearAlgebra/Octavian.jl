@@ -18,9 +18,24 @@
 [ci-julia-nightly-img]: https://github.com/JuliaLinearAlgebra/Octavian.jl/workflows/CI%20(Julia%20nightly)/badge.svg "Continuous Integration (Julia nightly)"
 [codecov-img]:          https://codecov.io/gh/JuliaLinearAlgebra/Octavian.jl/branch/master/graph/badge.svg           "Code Coverage"
 
-Octavian.jl is a multi-threaded BLAS-like library that provides pure Julia
-matrix multiplication, built on top of
+Octavian.jl
+is a multi-threaded BLAS-like library that provides pure Julia
+matrix multiplication on the CPU, built on top of
 [LoopVectorization.jl](https://github.com/chriselrod/LoopVectorization.jl).
 
 Please see the
 [Octavian documentation](https://JuliaLinearAlgebra.github.io/Octavian.jl/stable).
+
+## Related Packages
+
+| Julia Package                                                    | CPU | GPU |
+| ---------------------------------------------------------------- | --- | --- |
+| [Gaius.jl](https://github.com/MasonProtter/Gaius.jl)             | Yes | No  |
+| [GemmKernels.jl](https://github.com/JuliaGPU/GemmKernels.jl)     | No  | Yes |
+| [Octavian.jl](https://github.com/JuliaLinearAlgebra/Octavian.jl) | Yes | No  |
+| [Tullio.jl](https://github.com/mcabbott/Tullio.jl)               | Yes | Yes |
+
+In general:
+- Octavian has the fastest CPU performance.
+- GemmKernels has the fastest GPU performance.
+- Tullio is the most flexible.
