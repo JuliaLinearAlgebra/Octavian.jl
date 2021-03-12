@@ -3,7 +3,8 @@ coverage:
     project:
       default:
         target: auto
-      # minimum:
-      #   target: "95%"
       minimum:
         target: "80%"
+        # target: "85%"
+        # target: "90%"
+        # target: "95%"
