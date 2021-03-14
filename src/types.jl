@@ -6,10 +6,6 @@ mutable struct MemoryBuffer{L,T} <: DenseVector{T}
     end
 end
 
-struct StaticFloat{N} <: AbstractFloat
-    StaticFloat{N}() where {N} = new{N::Float64}()
-end
-
 struct BCache{T<:Union{UInt,Nothing}}
     p::Ptr{Cvoid}
     i::T

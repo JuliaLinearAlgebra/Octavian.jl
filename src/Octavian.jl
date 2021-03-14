@@ -6,15 +6,15 @@ using VectorizationBase: align, AbstractStridedPointer, zstridedpointer,
     static_sizeof, lazymul, StridedPointer, gesp, pause, pick_vector_width, has_feature,
     num_cache_levels, cache_size, num_cores, num_cores, cache_inclusive, cache_linesize, ifelse
 using LoopVectorization: maybestaticsize, matmul_params, preserve_buffer, CloseOpen
-using ArrayInterface: StaticInt, Zero, One, OptionallyStaticUnitRange, size, strides, offsets, indices,
-    static_length, static_first, static_last, axes, dense_dims, stride_rank,
-    StaticBool, True, False, gt, eq
+using ArrayInterface: OptionallyStaticUnitRange, size, strides, offsets, indices,
+    static_length, static_first, static_last, axes, dense_dims, stride_rank
+    
+using Static: StaticInt, Zero, One, StaticBool, True, False, gt, eq, StaticFloat64,
+    roundtostaticint, floortostaticint
 
 using ThreadingUtilities:
-    _atomic_add!, _atomic_umax!, _atomic_umin!,
-    _atomic_load, _atomic_store!, _atomic_cas_cmp!,
-    SPIN, WAIT, TASK, LOCK, STUP, taskpointer,
-    wake_thread!, __wait, load, store!
+    _atomic_add!, _atomic_load, _atomic_store!,    
+    launch, wait, load, store!
 
 export StaticInt
 export matmul!
@@ -24,7 +24,6 @@ export matmul_serial
 
 include("global_constants.jl")
 include("types.jl")
-include("staticfloats.jl")
 include("integerdivision.jl")
 include("memory_buffer.jl")
 include("block_sizes.jl")
