@@ -236,7 +236,7 @@ end
         if maybeinline(M, N, T, ArrayInterface.is_column_major(A)) # check MUST be compile-time resolvable
             inlineloopmul!(pC, pA, pB, One(), Zero(), M, K, N)
             return
-        elseif (nᵣ ≥ N) || (M*K*N < (StaticInt{13824}() * W))
+        elseif (nᵣ ≥ N) || (M*K*N < (StaticInt{4096}() * W))
             loopmul!(pC, pA, pB, α, β, M, K, N)
             return
         else
