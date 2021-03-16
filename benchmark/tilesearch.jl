@@ -1,7 +1,7 @@
 
 
 using Octavian, VectorizationBase, ProgressMeter
-using Octavian: StaticFloat
+using Octavian: StaticFloat64
 function matmul_pack_ab!(C, A, B, ::Val{W₁}, ::Val{W₂}, ::Val{R₁}, ::Val{R₂}) where {W₁, W₂, R₁, R₂}
     M, N = size(C); K = size(B,1)
     zc, za, zb = Octavian.zstridedpointer.((C,A,B))
@@ -9,7 +9,7 @@ function matmul_pack_ab!(C, A, B, ::Val{W₁}, ::Val{W₂}, ::Val{R₁}, ::Val{R
     @elapsed(
         Octavian.matmul_pack_A_and_B!(
             zc, za, zb, StaticInt{1}(), StaticInt{0}(), M, K, N, nspawn,
-            StaticFloat{W₁}(), StaticFloat{W₂}(), StaticFloat{R₁}(), StaticFloat{R₂}()
+            StaticFloat64{W₁}(), StaticFloat64{W₂}(), StaticFloat64{R₁}(), StaticFloat64{R₂}()
         )
     )
 end
