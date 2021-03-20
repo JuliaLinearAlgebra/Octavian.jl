@@ -151,6 +151,12 @@ Otherwise, based on the array's size, whether they are transposed, and whether t
     C::AbstractMatrix{T}, A::AbstractMatrix, B::AbstractMatrix, α, β, MKN
 ) where {T}
     M, K, N = MKN === nothing ? matmul_sizes(C, A, B) : MKN
+    if M * N == 0
+        return
+    elseif K == 0
+        matmul_only_β!(C, β)
+        return
+    end
     pA = zstridedpointer(A); pB = zstridedpointer(B); pC = zstridedpointer(C);
     Cb = preserve_buffer(C); Ab = preserve_buffer(A); Bb = preserve_buffer(B);
     Mc, Kc, Nc = block_sizes(T); mᵣ, nᵣ = matmul_params();
@@ -167,6 +173,18 @@ Otherwise, based on the array's size, whether they are transposed, and whether t
         end
     end
 end # function
+
+function matmul_only_β!(C::AbstractMatrix{T}, β::StaticInt{0}) where T
+    @avx for i=1:length(C)
+        C[i] = zero(T)
+    end
+end
+
+function matmul_only_β!(C::AbstractMatrix{T}, β) where T
+    @avx for i=1:length(C)
+        C[i] = β * C[i]
+    end
+end
 
 function matmul_st_pack_dispatcher!(pC::AbstractStridedPointer{T}, pA, pB, α, β, M, K, N) where {T}
     Mc, Kc, Nc = block_sizes(T)
@@ -228,6 +246,12 @@ end
 # passing MKN directly would let osmeone skip the size check.
 @inline function _matmul!(C::AbstractMatrix{T}, A, B, α, β, nthread, MKN) where {T}#::Union{Nothing,Tuple{Vararg{Integer,3}}}) where {T}
     M, K, N = MKN === nothing ? matmul_sizes(C, A, B) : MKN
+    if M * N == 0
+        return
+    elseif K == 0
+        matmul_only_β!(C, β)
+        return
+    end
     W = pick_vector_width(T)
     pA = zstridedpointer(A); pB = zstridedpointer(B); pC = zstridedpointer(C);
     Cb = preserve_buffer(C); Ab = preserve_buffer(A); Bb = preserve_buffer(B);
