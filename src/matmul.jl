@@ -151,6 +151,21 @@ Otherwise, based on the array's size, whether they are transposed, and whether t
     C::AbstractMatrix{T}, A::AbstractMatrix, B::AbstractMatrix, α, β, MKN
 ) where {T}
     M, K, N = MKN === nothing ? matmul_sizes(C, A, B) : MKN
+    if M * N == 0
+        return
+    elseif K == 0
+        if β isa StaticInt{0}   # this is actually type stable
+            @avx for i=1:length(C)
+                C[i] = zero(T)
+            end
+            return
+        else
+            @avx for i=1:length(C)
+                C[i] = β * C[i]
+            end
+            return
+        end
+    end
     pA = zstridedpointer(A); pB = zstridedpointer(B); pC = zstridedpointer(C);
     Cb = preserve_buffer(C); Ab = preserve_buffer(A); Bb = preserve_buffer(B);
     Mc, Kc, Nc = block_sizes(T); mᵣ, nᵣ = matmul_params();

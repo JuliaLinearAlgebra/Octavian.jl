@@ -140,3 +140,9 @@ end
     @test matmul_pack_ab!(similar(AB), A′, B′) ≈ AB
 end
 
+@time @testset "zero-sized-matrices" begin
+    @test Octavian.matmul_serial(randn(0,0), randn(0,0)) == zeros(0, 0)
+    @test Octavian.matmul_serial(randn(2,3), randn(3,0)) == zeros(2, 0)
+    @test Octavian.matmul_serial(randn(2,0), randn(0,2)) == zeros(2, 2)
+    @test Octavian.matmul_serial!(ones(2,2),randn(2,0), randn(0,2), 1.0, 2.0) == ones(2, 2) .* 2
+end
