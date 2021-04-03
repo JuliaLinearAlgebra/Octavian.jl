@@ -11,6 +11,7 @@ using ArrayInterface: OptionallyStaticUnitRange, size, strides, offsets, indices
     
 using Static: StaticInt, Zero, One, StaticBool, True, False, gt, eq, StaticFloat64,
     roundtostaticint, floortostaticint
+using StrideArraysCore: MemoryBuffer
 
 using ThreadingUtilities:
     _atomic_add!, _atomic_load, _atomic_store!,    
