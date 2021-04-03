@@ -2,7 +2,7 @@ function __init__()
     init_acache()
     init_bcache()
     nt = init_num_tasks()
-    if nt < num_cores() && ("SUPPRESS_OCTAVIAN_WARNING" ∉ keys(ENV))
+    if nt < num_cores() && ("OCTAVIAN_WARNING" ∈ keys(ENV))
         msg = string(
             "Your system has $(num_cores()) physical cores, but `Octavian.jl` only has ",
             "$(nt > 1 ? "$(nt) threads" : "$(nt) thread") available. ",
