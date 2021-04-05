@@ -260,11 +260,17 @@ end
         if maybeinline(M, N, T, ArrayInterface.is_column_major(A)) # check MUST be compile-time resolvable
             inlineloopmul!(pC, pA, pB, One(), Zero(), M, K, N)
             return
-        elseif (nᵣ ≥ N) || (M*K*N < (StaticInt{4096}() * W))
-            loopmul!(pC, pA, pB, α, β, M, K, N)
-            return
         else
+            (nᵣ ≥ N) && @goto LOOPMUL
+            if (Sys.ARCH === :x86_64) || (Sys.ARCH === :i686)
+                (M*K*N < (StaticInt{4_096}() * W)) && @goto LOOPMUL
+            else
+                (M*K*N < (StaticInt{32_000}() * W)) && @goto LOOPMUL
+            end
             __matmul!(pC, pA, pB, α, β, M, K, N, nthread)
+            return
+            @label LOOPMUL
+            loopmul!(pC, pA, pB, α, β, M, K, N)
             return
         end
     end
@@ -326,11 +332,13 @@ function __matmul!(
         return
     end
     # We are threading, but how many threads?
-    L = StaticInt{128}() * W
-    # L = StaticInt{64}() * W
-    nspawn = clamp(div_fast(M * N, L), 1, _nthread)
-
+    nspawn = if (Sys.ARCH === :x86_64) || (Sys.ARCH === :i686)
+        clamp(div_fast(M * N, StaticInt{128}() * W), 1, _nthread)
+    else
+        clamp(div_fast(M * N, StaticInt{256}() * W), 1, _nthread)
+    end
     # nkern = cld_fast(M * N,  MᵣW * Nᵣ)
+    
     # Approach:
     # Check if we don't want to pack A,
     #    if not, aggressively subdivide
