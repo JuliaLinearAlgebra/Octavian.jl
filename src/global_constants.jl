@@ -48,17 +48,22 @@ R₂Default() = R₂Default(has_feature(Val(:x86_64_avx512f)))
 
 
 
-
-first_cache() = ifelse(gt(num_cache_levels(), StaticInt{2}()), StaticInt{2}(), StaticInt{1}())
+_first_cache(::StaticInt{1}) = StaticInt{1}()
+_first_cache(::StaticInt) = StaticInt{2}()
+first_cache() = _first_cache(VectorizationBase.num_l2cache())
 second_cache() = first_cache() + One()
 
 _first_cache_size(fcs::StaticInt) = ifelse(eq(first_cache(), StaticInt(2)) & cache_inclusive(StaticInt(2)), fcs - cache_size(One()), fcs)
 _first_cache_size(::Nothing) = StaticInt(262144)
 first_cache_size() = _first_cache_size(cache_size(first_cache()))
 
-_second_cache_size(scs::StaticInt) = ifelse(cache_inclusive(second_cache()), scs - cache_size(first_cache()), scs)
-_second_cache_size(::Nothing) = StaticInt(3145728)
-second_cache_size() = _second_cache_size(cache_size(second_cache()))
+_second_cache_size(scs::StaticInt, ::True) = scs - cache_size(first_cache())
+_second_cache_size(scs::StaticInt, ::False) = scs
+_second_cache_size(::StaticInt{0}, ::Nothing) = StaticInt(3145728)
+function second_cache_size()
+    sc = second_cache()
+    _second_cache_size(cache_size(sc), cache_inclusive(sc))
+end
 
 first_cache_size(::Type{T}) where {T} = first_cache_size() ÷ static_sizeof(T)
 second_cache_size(::Type{T}) where {T} = second_cache_size() ÷ static_sizeof(T)
