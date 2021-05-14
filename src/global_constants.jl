@@ -16,26 +16,25 @@ MᵣW_mul_factor(::True) = StaticInt{4}()
 MᵣW_mul_factor(::False) = StaticInt{9}()
 MᵣW_mul_factor() = MᵣW_mul_factor(has_feature(Val(:x86_64_avx512f)))
 
+W₁Default(::True) = StaticFloat64{0.006089395198610773}()
+W₂Default(::True) = StaticFloat64{0.7979822724696168}()
+R₁Default(::True) = StaticFloat64{0.5900561503730485}()
+R₂Default(::True) = StaticFloat64{0.762152930709678}()
 
-W₁Default(::True) = StaticFloat{0.0036936936936936933}()
-W₂Default(::True) = StaticFloat{0.6872772772772773}()
-R₁Default(::True) = StaticFloat{0.5108108108108109}()
-R₂Default(::True) = StaticFloat{0.7153753753753754}()
+W₁Default_arch(::Val{:znver1}) = StaticFloat64{0.053918949422353986}()
+W₂Default_arch(::Val{:znver1}) = StaticFloat64{0.3013238122374886}()
+R₁Default_arch(::Val{:znver1}) = StaticFloat64{0.6077103834481342}()
+R₂Default_arch(::Val{:znver1}) = StaticFloat64{0.8775382433240162}()
 
-W₁Default_arch(::Val{:znver1}) = StaticFloat{0.053918949422353986}()
-W₂Default_arch(::Val{:znver1}) = StaticFloat{0.3013238122374886}()
-R₁Default_arch(::Val{:znver1}) = StaticFloat{0.6077103834481342}()
-R₂Default_arch(::Val{:znver1}) = StaticFloat{0.8775382433240162}()
+W₁Default_arch(::Union{Val{:znver2},Val{:znver3}}) = StaticFloat64{0.1}()
+W₂Default_arch(::Union{Val{:znver2},Val{:znver3}}) = StaticFloat64{0.993489411720157}()
+R₁Default_arch(::Union{Val{:znver2},Val{:znver3}}) = StaticFloat64{0.6052218809954467}()
+R₂Default_arch(::Union{Val{:znver2},Val{:znver3}}) = StaticFloat64{0.7594052633561165}()
 
-W₁Default_arch(::Union{Val{:znver2},Val{:znver3}}) = StaticFloat{0.1}()
-W₂Default_arch(::Union{Val{:znver2},Val{:znver3}}) = StaticFloat{0.993489411720157}()
-R₁Default_arch(::Union{Val{:znver2},Val{:znver3}}) = StaticFloat{0.6052218809954467}()
-R₂Default_arch(::Union{Val{:znver2},Val{:znver3}}) = StaticFloat{0.7594052633561165}()
-
-W₁Default_arch(_) = StaticFloat{0.1}()
-W₂Default_arch(_) = StaticFloat{0.15989396641218157}()
-R₁Default_arch(_) = StaticFloat{0.4203583148344484}()
-R₂Default_arch(_) = StaticFloat{0.8775382433240162}()
+W₁Default_arch(_) = StaticFloat64{0.1}()
+W₂Default_arch(_) = StaticFloat64{0.15989396641218157}()
+R₁Default_arch(_) = StaticFloat64{0.4203583148344484}()
+R₂Default_arch(_) = StaticFloat64{0.8775382433240162}()
 
 W₁Default(::False) = W₁Default_arch(VectorizationBase.cpu_name())
 W₂Default(::False) = W₂Default_arch(VectorizationBase.cpu_name())
@@ -49,17 +48,22 @@ R₂Default() = R₂Default(has_feature(Val(:x86_64_avx512f)))
 
 
 
-
-first_cache() = ifelse(gt(num_cache_levels(), StaticInt{2}()), StaticInt{2}(), StaticInt{1}())
+_first_cache(::StaticInt{1}) = StaticInt{1}()
+_first_cache(::StaticInt) = StaticInt{2}()
+first_cache() = _first_cache(VectorizationBase.num_l2cache())
 second_cache() = first_cache() + One()
 
 _first_cache_size(fcs::StaticInt) = ifelse(eq(first_cache(), StaticInt(2)) & cache_inclusive(StaticInt(2)), fcs - cache_size(One()), fcs)
 _first_cache_size(::Nothing) = StaticInt(262144)
 first_cache_size() = _first_cache_size(cache_size(first_cache()))
 
-_second_cache_size(scs::StaticInt) = ifelse(cache_inclusive(second_cache()), scs - cache_size(first_cache()), scs)
-_second_cache_size(::Nothing) = StaticInt(3145728)
-second_cache_size() = _second_cache_size(cache_size(second_cache()))
+_second_cache_size(scs::StaticInt, ::True) = scs - cache_size(first_cache())
+_second_cache_size(scs::StaticInt, ::False) = scs
+_second_cache_size(::StaticInt{0}, ::Nothing) = StaticInt(3145728)
+function second_cache_size()
+    sc = second_cache()
+    _second_cache_size(cache_size(sc), cache_inclusive(sc))
+end
 
 first_cache_size(::Type{T}) where {T} = first_cache_size() ÷ static_sizeof(T)
 second_cache_size(::Type{T}) where {T} = second_cache_size() ÷ static_sizeof(T)

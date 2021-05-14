@@ -1,21 +1,20 @@
 
-
-using Octavian, VectorizationBase#, ProgressMeter
-using Octavian: StaticFloat
+using Octavian, VectorizationBase
+using Octavian: StaticFloat64
 function matmul_pack_ab!(C, A, B, ::Val{W₁}, ::Val{W₂}, ::Val{R₁}, ::Val{R₂}) where {W₁, W₂, R₁, R₂}
-    M, N = size(C); K = size(B,1)
-    zc, za, zb = Octavian.zstridedpointer.((C,A,B))
-    # nspawn = min(Threads.nthreads(), VectorizationBase.num_cores())
-    nspawn = VectorizationBase.num_cores()
-    GC.@preserve C A B begin
-        @elapsed(
-            Octavian.matmul_pack_A_and_B!(
-                zc, za, zb, StaticInt{1}(), StaticInt{0}(), M, K, N, Int(nspawn),
-                StaticFloat{W₁}(), StaticFloat{W₂}(), StaticFloat{R₁}(), StaticFloat{R₂}()
-            )
-        )
-    end
+  M, N = size(C); K = size(B,1)
+  zc, za, zb = Octavian.zstridedpointer.((C,A,B))
+  nspawn = VectorizationBase.num_cores()
+  GC.@preserve C A B begin
+    @elapsed(
+      Octavian.matmul_pack_A_and_B!(
+        zc, za, zb, StaticInt{1}(), StaticInt{0}(), M, K, N, nspawn,
+        StaticFloat64{W₁}(), StaticFloat64{W₂}(), StaticFloat64{R₁}(), StaticFloat64{R₂}()
+      )
+    )
+  end
 end
+
 
 function bench_size(Cs, As, Bs, ::Val{W₁}, ::Val{W₂}, ::Val{R₁}, ::Val{R₂}) where {W₁, W₂, R₁, R₂}
     if length(first(Cs)) < length(last(Cs))

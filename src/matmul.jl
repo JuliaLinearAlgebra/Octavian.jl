@@ -3,12 +3,12 @@ Only packs `A`. Primitively does column-major packing: it packs blocks of `A` in
 """
 function matmul_st_only_pack_A!(
     C::AbstractStridedPointer{T}, A::AbstractStridedPointer, B::AbstractStridedPointer,
-    α, β, M, K, N, ::StaticFloat{W₁}, ::StaticFloat{W₂}, ::StaticFloat{R₁}, ::StaticFloat{R₂}
+    α, β, M, K, N, ::StaticFloat64{W₁}, ::StaticFloat64{W₂}, ::StaticFloat64{R₁}, ::StaticFloat64{R₂}
 ) where {T, W₁, W₂, R₁, R₂}
 
     mᵣ, nᵣ = matmul_params()
     ((Mblock, Mblock_Mrem, Mremfinal, Mrem, Miter), (Kblock, Kblock_Krem, Krem, Kiter)) =
-        solve_McKc(T, M, K, N, StaticFloat{W₁}(), StaticFloat{W₂}(), StaticFloat{R₁}(), StaticFloat{R₂}(), mᵣ)
+        solve_McKc(T, M, K, N, StaticFloat64{W₁}(), StaticFloat64{W₂}(), StaticFloat64{R₁}(), StaticFloat64{R₂}(), mᵣ)
     for ko ∈ CloseOpen(Kiter)
         ksize = ifelse(ko < Krem, Kblock_Krem, Kblock)
         let A = A, C = C
@@ -151,6 +151,12 @@ Otherwise, based on the array's size, whether they are transposed, and whether t
     C::AbstractMatrix{T}, A::AbstractMatrix, B::AbstractMatrix, α, β, MKN
 ) where {T}
     M, K, N = MKN === nothing ? matmul_sizes(C, A, B) : MKN
+    if M * N == 0
+        return
+    elseif K == 0
+        matmul_only_β!(C, β)
+        return
+    end
     pA = zstridedpointer(A); pB = zstridedpointer(B); pC = zstridedpointer(C);
     Cb = preserve_buffer(C); Ab = preserve_buffer(A); Bb = preserve_buffer(B);
     Mc, Kc, Nc = block_sizes(T); mᵣ, nᵣ = matmul_params();
@@ -167,6 +173,18 @@ Otherwise, based on the array's size, whether they are transposed, and whether t
         end
     end
 end # function
+
+function matmul_only_β!(C::AbstractMatrix{T}, β::StaticInt{0}) where T
+    @avx for i=1:length(C)
+        C[i] = zero(T)
+    end
+end
+
+function matmul_only_β!(C::AbstractMatrix{T}, β) where T
+    @avx for i=1:length(C)
+        C[i] = β * C[i]
+    end
+end
 
 function matmul_st_pack_dispatcher!(pC::AbstractStridedPointer{T}, pA, pB, α, β, M, K, N) where {T}
     Mc, Kc, Nc = block_sizes(T)
@@ -228,6 +246,12 @@ end
 # passing MKN directly would let osmeone skip the size check.
 @inline function _matmul!(C::AbstractMatrix{T}, A, B, α, β, nthread, MKN) where {T}#::Union{Nothing,Tuple{Vararg{Integer,3}}}) where {T}
     M, K, N = MKN === nothing ? matmul_sizes(C, A, B) : MKN
+    if M * N == 0
+        return
+    elseif K == 0
+        matmul_only_β!(C, β)
+        return
+    end
     W = pick_vector_width(T)
     pA = zstridedpointer(A); pB = zstridedpointer(B); pC = zstridedpointer(C);
     Cb = preserve_buffer(C); Ab = preserve_buffer(A); Bb = preserve_buffer(B);
@@ -236,11 +260,17 @@ end
         if maybeinline(M, N, T, ArrayInterface.is_column_major(A)) # check MUST be compile-time resolvable
             inlineloopmul!(pC, pA, pB, One(), Zero(), M, K, N)
             return
-        elseif (nᵣ ≥ N) || (M*K*N < (StaticInt{13824}() * W))
-            loopmul!(pC, pA, pB, α, β, M, K, N)
-            return
         else
+            (nᵣ ≥ N) && @goto LOOPMUL
+            if (Sys.ARCH === :x86_64) || (Sys.ARCH === :i686)
+                (M*K*N < (StaticInt{4_096}() * W)) && @goto LOOPMUL
+            else
+                (M*K*N < (StaticInt{32_000}() * W)) && @goto LOOPMUL
+            end
             __matmul!(pC, pA, pB, α, β, M, K, N, nthread)
+            return
+            @label LOOPMUL
+            loopmul!(pC, pA, pB, α, β, M, K, N)
             return
         end
     end
@@ -302,11 +332,13 @@ function __matmul!(
         return
     end
     # We are threading, but how many threads?
-    L = StaticInt{128}() * W
-    # L = StaticInt{64}() * W
-    nspawn = clamp(div_fast(M * N, L), 1, _nthread)
-
+    nspawn = if (Sys.ARCH === :x86_64) || (Sys.ARCH === :i686)
+        clamp(div_fast(M * N, StaticInt{128}() * W), 1, _nthread)
+    else
+        clamp(div_fast(M * N, StaticInt{256}() * W), 1, _nthread)
+    end
     # nkern = cld_fast(M * N,  MᵣW * Nᵣ)
+    
     # Approach:
     # Check if we don't want to pack A,
     #    if not, aggressively subdivide
@@ -336,14 +368,14 @@ end
 # If tasks is [0,1,2,3] (e.g., `CloseOpen(0,4)`), it will wait on `MULTASKS[i]` for `i = [1,2,3]`.
 function waitonmultasks(tasks)
     for tid ∈ tasks
-        __wait(tid)
+        wait(tid)
     end
 end
 
 @inline allocref(::StaticInt{N}) where {N} = Ref{NTuple{N,UInt8}}()
 function matmul_pack_A_and_B!(
     C::AbstractStridedPointer{T}, A::AbstractStridedPointer, B::AbstractStridedPointer, α, β, M, K, N,
-    tospawn::Int, ::StaticFloat{W₁}, ::StaticFloat{W₂}, ::StaticFloat{R₁}, ::StaticFloat{R₂}#, ::Val{1}
+    tospawn::Int, ::StaticFloat64{W₁}, ::StaticFloat64{W₂}, ::StaticFloat64{R₁}, ::StaticFloat64{R₂}#, ::Val{1}
 ) where {T,W₁,W₂,R₁,R₂}
     W = pick_vector_width(T)
     mᵣ, nᵣ = matmul_params()
@@ -356,8 +388,6 @@ function matmul_pack_A_and_B!(
         for i ∈ CloseOpen(2_to_spawn)
             _atomic_store!(p + i*cache_linesize(), zero(UInt))
         end
-        # _atomic_umin!(p, zero(UInt)); _atomic_umin!(p + 8sizeof(UInt), zero(UInt))
-        #    Mbsize, Mrem, Mremfinal, _to_spawn = split_m(M, tospawn, mᵣW) # M is guaranteed to be > W because of `W ≥ M` condition for `jmultsplitn!`...
         Mblock_Mrem, Mblock_ = promote(Mbsize + W, Mbsize)
         u_to_spawn = _to_spawn % UInt
         tid = 0
@@ -366,11 +396,11 @@ function matmul_pack_A_and_B!(
         last_id = _to_spawn - One()
         for m ∈ CloseOpen(last_id) # ...thus the fact that `CloseOpen()` iterates at least once is okay.
             Mblock = ifelse(m < Mrem, Mblock_Mrem, Mblock_)
-            launch_thread_mul!(C, A, B, α, β, Mblock, K, N, p, bc_ptr, m % UInt, u_to_spawn, StaticFloat{W₁}(),StaticFloat{W₂}(),StaticFloat{R₁}(),StaticFloat{R₂}())
+            launch_thread_mul!(C, A, B, α, β, Mblock, K, N, p, bc_ptr, m % UInt, u_to_spawn, StaticFloat64{W₁}(),StaticFloat64{W₂}(),StaticFloat64{R₁}(),StaticFloat64{R₂}())
             A = gesp(A, (Mblock, Zero()))
             C = gesp(C, (Mblock, Zero()))
         end
-        sync_mul!(C, A, B, α, β, Mremfinal, K, N, p, bc_ptr, last_id % UInt, u_to_spawn, StaticFloat{W₁}(), StaticFloat{W₂}(), StaticFloat{R₁}(), StaticFloat{R₂}())
+        sync_mul!(C, A, B, α, β, Mremfinal, K, N, p, bc_ptr, last_id % UInt, u_to_spawn, StaticFloat64{W₁}(), StaticFloat64{W₂}(), StaticFloat64{R₁}(), StaticFloat64{R₂}())
         waitonmultasks(CloseOpen(One(), _to_spawn))
     end
     _free_bcache!(bc)
@@ -379,11 +409,11 @@ end
 
 function sync_mul!(
     C::AbstractStridedPointer{T}, A::AbstractStridedPointer, B::AbstractStridedPointer, α, β, M, K, N, atomicp::Ptr{UInt}, bc::Ptr, id::UInt, total_ids::UInt,
-    ::StaticFloat{W₁}, ::StaticFloat{W₂}, ::StaticFloat{R₁}, ::StaticFloat{R₂}
+    ::StaticFloat64{W₁}, ::StaticFloat64{W₂}, ::StaticFloat64{R₁}, ::StaticFloat64{R₂}
 ) where {T, W₁, W₂, R₁, R₂}
 
     (Mblock, Mblock_Mrem, Mremfinal, Mrem, Miter), (Kblock, Kblock_Krem, Krem, Kiter), (Nblock, Nblock_Nrem, Nrem, Niter) =
-        solve_block_sizes(T, M, K, N, StaticFloat{W₁}(), StaticFloat{W₂}(), StaticFloat{R₁}(), StaticFloat{R₂}(), One())
+        solve_block_sizes(T, M, K, N, StaticFloat64{W₁}(), StaticFloat64{W₂}(), StaticFloat64{R₁}(), StaticFloat64{R₂}(), One())
 
     # atomics = atomicp + 8sizeof(UInt)
     sync_iters = zero(UInt)
@@ -416,19 +446,12 @@ function sync_mul!(
                 _B = default_zerobased_stridedpointer(bc, (One(), ksize))
                 unsafe_copyto_avx!(gesp(_B, (Zero(), pack_offset)), gesp(B, (Zero(), pack_offset)), ksize, pack_len)
                 # synchronize before starting the multiplication, to ensure `B` is packed
-                # sync_iters += total_ids
-                # _mv = _atomic_add!(atomicp, one(UInt))
-                # while _mv < sync_iters
-                #     pause()
-                #     _mv = _atomic_umax!(atomicp, zero(UInt))
-                # end
                 _mv = _atomic_add!(myp, one(UInt))
                 sync_iters += one(UInt)
                 let atomp = atomicp
                     for _ ∈ CloseOpen(total_ids)
                         atomp += cache_linesize()
                         atomp == myp && continue
-                        # while !_atomic_cas_cmp!(atomp, sync_iters, sync_iters)
                         while _atomic_load(atomp) != sync_iters
                             pause()
                         end
@@ -450,17 +473,11 @@ function sync_mul!(
                 A = gesp(A, (Zero(), ksize))
                 B = gesp(B, (ksize, Zero()))
                 # synchronize on completion so we wait until every thread is done with `Bpacked` before beginning to overwrite it
-                # _mv = _atomic_add!(atomics, one(UInt))
-                # while _mv < sync_iters
-                #     pause()
-                #     _mv = _atomic_umax!(atomics, zero(UInt))
-                # end
                 _mv = _atomic_add!(mys, one(UInt))
                 let atoms = atomics
                     for _ ∈ CloseOpen(total_ids)
                         atoms += cache_linesize()
                         atoms == mys && continue
-                        # while !_atomic_cas_cmp!(atoms, sync_iters, sync_iters)
                         while _atomic_load(atoms) != sync_iters
                             pause()
                         end

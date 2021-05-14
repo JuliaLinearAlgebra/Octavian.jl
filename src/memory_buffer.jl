@@ -1,17 +1,3 @@
-@inline Base.unsafe_convert(::Type{Ptr{T}}, d::MemoryBuffer) where {T} = Base.unsafe_convert(Ptr{T}, Base.pointer_from_objref(d))
-@inline MemoryBuffer{T}(::UndefInitializer, ::StaticInt{L}) where {L,T} = MemoryBuffer{L,T}(undef)
-Base.size(::MemoryBuffer{L}) where L = (L,)
-@inline Base.similar(::MemoryBuffer{L,T}) where {L,T} = MemoryBuffer{L,T}(undef)
-# Base.IndexStyle(::Type{<:MemoryBuffer}) = Base.IndexLinear()
-@inline function Base.getindex(m::MemoryBuffer{L,T}, i::Int) where {L,T}
-    @boundscheck checkbounds(m, i)
-    GC.@preserve m x = vload(pointer(m), VectorizationBase.lazymul(VectorizationBase.static_sizeof(T), i - one(i)))
-    x
-end
-@inline function Base.setindex!(m::MemoryBuffer{L,T}, x, i::Int) where {L,T}
-    @boundscheck checkbounds(m, i)
-    GC.@preserve m vstore!(pointer(m), convert(T, x), lazymul(static_sizeof(T), i - one(i)))
-end
 
 if Sys.WORD_SIZE == 32
     @inline function first_cache_buffer(::Type{T}) where {T}
