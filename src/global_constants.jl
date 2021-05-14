@@ -16,10 +16,11 @@ MᵣW_mul_factor(::True) = StaticInt{4}()
 MᵣW_mul_factor(::False) = StaticInt{9}()
 MᵣW_mul_factor() = MᵣW_mul_factor(has_feature(Val(:x86_64_avx512f)))
 
-W₁Default(::True) = StaticFloat{0.006089395198610773}()
-W₂Default(::True) = StaticFloat{0.7979822724696168}()
-R₁Default(::True) = StaticFloat{0.5900561503730485}()
-R₂Default(::True) = StaticFloat{0.762152930709678}()
+
+W₁Default(::True) = StaticFloat{0.0036936936936936933}()
+W₂Default(::True) = StaticFloat{0.6872772772772773}()
+R₁Default(::True) = StaticFloat{0.5108108108108109}()
+R₂Default(::True) = StaticFloat{0.7153753753753754}()
 
 W₁Default_arch(::Val{:znver1}) = StaticFloat{0.053918949422353986}()
 W₂Default_arch(::Val{:znver1}) = StaticFloat{0.3013238122374886}()

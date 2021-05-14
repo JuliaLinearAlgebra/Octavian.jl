@@ -1,17 +1,20 @@
 
 
-using Octavian, VectorizationBase, ProgressMeter
+using Octavian, VectorizationBase#, ProgressMeter
 using Octavian: StaticFloat
 function matmul_pack_ab!(C, A, B, ::Val{W₁}, ::Val{W₂}, ::Val{R₁}, ::Val{R₂}) where {W₁, W₂, R₁, R₂}
     M, N = size(C); K = size(B,1)
     zc, za, zb = Octavian.zstridedpointer.((C,A,B))
-    nspawn = min(Threads.nthreads(), VectorizationBase.num_cores())
-    @elapsed(
-        Octavian.matmul_pack_A_and_B!(
-            zc, za, zb, StaticInt{1}(), StaticInt{0}(), M, K, N, nspawn,
-            StaticFloat{W₁}(), StaticFloat{W₂}(), StaticFloat{R₁}(), StaticFloat{R₂}()
+    # nspawn = min(Threads.nthreads(), VectorizationBase.num_cores())
+    nspawn = VectorizationBase.num_cores()
+    GC.@preserve C A B begin
+        @elapsed(
+            Octavian.matmul_pack_A_and_B!(
+                zc, za, zb, StaticInt{1}(), StaticInt{0}(), M, K, N, Int(nspawn),
+                StaticFloat{W₁}(), StaticFloat{W₂}(), StaticFloat{R₁}(), StaticFloat{R₂}()
+            )
         )
-    )
+    end
 end
 
 function bench_size(Cs, As, Bs, ::Val{W₁}, ::Val{W₂}, ::Val{R₁}, ::Val{R₂}) where {W₁, W₂, R₁, R₂}
@@ -20,15 +23,18 @@ function bench_size(Cs, As, Bs, ::Val{W₁}, ::Val{W₂}, ::Val{R₁}, ::Val{R�
     else
         matmul_pack_ab!(last(Cs), last(As), last(Bs), Val{W₁}(), Val{W₂}(), Val{R₁}(), Val{R₂}())
     end
+    repeat = 10
     gflop = 0.0
-    for (C,A,B) ∈ zip(Cs,As,Bs)
-        M, K, N = Octavian.matmul_sizes(C, A, B)
-        # sleep(0.5)
-        t = matmul_pack_ab!(C, A, B, Val{W₁}(), Val{W₂}(), Val{R₁}(), Val{R₂}())
-        gf = 2e-9M*K*N / t
-        gflop += gf
+    for _ ∈ 1:repeat
+        for (C,A,B) ∈ zip(Cs,As,Bs)
+            M, K, N = Octavian.matmul_sizes(C, A, B)
+            # sleep(0.5)
+            t = matmul_pack_ab!(C, A, B, Val{W₁}(), Val{W₂}(), Val{R₁}(), Val{R₂}())
+            gf = 2e-9M*K*N / t
+            gflop += gf
+        end
     end
-    gflop / length(As)
+    gflop / (repeat*length(As))
 end
 matrix_sizes(s::Int) = (s,s,s)
 matrix_sizes(MKN::NTuple{3,Int}) = MKN
@@ -66,6 +72,44 @@ max_size = round(Int, sqrt( 32  * Octavian.VectorizationBase.cache_size(Val(3)) 
 SR = size_range(max_size, min_size, 100);
 const CsConst, AsConst, BsConst = matrix_range(SR, T);
 
+
+using Hyperopt
+ho = @hyperopt for i = 100, sampler=GPSampler(Max),
+    W₁ = LinRange(0.001, 0.3, 1000),
+    W₂ = LinRange(0.01, 2.0, 1000),
+    R₁ = LinRange(0.3, 0.9, 1000),
+    R₂ = LinRange(0.4, 0.99, 1000)
+    print("Params: ", (W₁, W₂, R₁, R₂), "; ")
+    gflop = bench_size(CsConst, AsConst, BsConst, Val{W₁}(), Val{W₂}(), Val{R₁}(), Val{R₂}())
+    println(gflop)
+    gflop
+end
+
+function restart(ho, iterations = 100)
+    olditer = ho.iterations
+    ho2 = Hyperoptimizer(
+        olditer + iterations,
+        ho.params,
+        ho.candidates,
+        ho.history[1:olditer],
+        ho.results[1:olditer],
+        ho.sampler#,
+        # ho.objective
+    )
+    # Hyperopt.optimize(ho2)
+    for nt ∈ ho2
+        (i, W₁, W₂, R₁, R₂) = nt
+        print("Params: ", (W₁, W₂, R₁, R₂), "; ")
+        gflop = bench_size(CsConst, AsConst, BsConst, Val{W₁}(), Val{W₂}(), Val{R₁}(), Val{R₂}())
+        println(gflop)
+        push!(ho2.results, gflop)
+    end
+    ho2
+end
+ho2 = restart(ho, 400)
+
+
+
 function matmul_objective(params)
     print("Params: ", params, "; ")
     W₁, W₂, R₁, R₂ = params
@@ -74,7 +118,6 @@ function matmul_objective(params)
     println(gflop)
     - gflop
 end
-
 using Optim
 hours = 60.0*60.0; days = 24hours;
 init = Float64[Octavian.W₁Default(), Octavian.W₂Default(), Octavian.R₁Default(), Octavian.R₂Default()]
