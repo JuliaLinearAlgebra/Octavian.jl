@@ -2,6 +2,8 @@ module Octavian
 
 using VectorizationBase, ArrayInterface, LoopVectorization
 
+using LoopVectorization: PtrArray
+
 using VectorizationBase: align, AbstractStridedPointer, zstridedpointer,
     static_sizeof, lazymul, StridedPointer, gesp, pause, pick_vector_width, has_feature,
     num_cache_levels, cache_size, num_cores, num_cores, cache_inclusive, cache_linesize, ifelse
