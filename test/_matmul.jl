@@ -45,7 +45,8 @@ for T ∈ (ComplexF32, ComplexF64, Complex{Int}, Complex{Int32})
 
                     C1 = rand(T, m, n)
                     C2 = copy(C1)
-                    @test @time(Octavian.matmul!(C1, A, B, 1.0-2.0im, 3.0+4im)) ≈ Octavian.matmul!(C2, A, B, 1.0-2.0im, 3.0+4im)
+                    α, β = T(1 - 2im), T(3 + 4im)
+                    @test @time(Octavian.matmul!(C1, A, B, α, β)) ≈ Octavian.matmul!(C2, A, B, α, β)
                 end
             end
         end
