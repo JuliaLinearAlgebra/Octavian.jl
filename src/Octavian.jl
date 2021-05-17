@@ -7,7 +7,7 @@ using VectorizationBase: align, AbstractStridedPointer, zstridedpointer,
     num_cache_levels, cache_size, num_cores, num_cores, cache_inclusive, cache_linesize, ifelse
 using LoopVectorization: maybestaticsize, matmul_params, preserve_buffer, CloseOpen
 using ArrayInterface: OptionallyStaticUnitRange, size, strides, offsets, indices,
-    static_length, static_first, static_last, axes, dense_dims, stride_rank, IfElse
+    static_length, static_first, static_last, axes, dense_dims, stride_rank
     
 using Static: StaticInt, Zero, One, StaticBool, True, False, gt, eq, StaticFloat64,
     roundtostaticint, floortostaticint

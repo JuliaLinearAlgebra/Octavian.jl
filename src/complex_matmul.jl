@@ -5,9 +5,9 @@ real_rep(a::AbstractArray{Complex{T}, N}) where {T, N} = reinterpret(reshape, T,
                          α=One(), β=Zero(), nthread::Nothing=nothing, MKN=nothing, contig_axis=nothing) where {T,U,V}
     C, A, B =  real_rep.((_C, _A, _B))
 
-    η = IfElse.ifelse(ArrayInterface.is_lazy_conjugate(_A), StaticInt(-1), StaticInt(1))
-    θ = IfElse.ifelse(ArrayInterface.is_lazy_conjugate(_B), StaticInt(-1), StaticInt(1))
-    (+ᶻ, -ᶻ) = IfElse.ifelse(ArrayInterface.is_lazy_conjugate(_C), (-, +), (+, -))
+    η = ifelse(ArrayInterface.is_lazy_conjugate(_A), StaticInt(-1), StaticInt(1))
+    θ = ifelse(ArrayInterface.is_lazy_conjugate(_B), StaticInt(-1), StaticInt(1))
+    (+ᶻ, -ᶻ) = ifelse(ArrayInterface.is_lazy_conjugate(_C), (-, +), (+, -))
     ηθ = η*θ
 
     @avxt for n ∈ indices((C, B), 3), m ∈ indices((C, A), 2)
@@ -27,8 +27,8 @@ end
                          α=One(), β=Zero(), nthread::Nothing=nothing, MKN=nothing, contig_axis=nothing) where {T,U,V}
     C, B = real_rep.((_C, _B))
     
-    θ = IfElse.ifelse(ArrayInterface.is_lazy_conjugate(_B), StaticInt(-1), StaticInt(1))
-    (+ᶻ, -ᶻ) = IfElse.ifelse(ArrayInterface.is_lazy_conjugate(_C), (-, +), (+, -))
+    θ = ifelse(ArrayInterface.is_lazy_conjugate(_B), StaticInt(-1), StaticInt(1))
+    (+ᶻ, -ᶻ) = ifelse(ArrayInterface.is_lazy_conjugate(_C), (-, +), (+, -))
 
     @avxt for n ∈ indices((C, B), 3), m ∈ indices((C, A), (2, 1))
         Cmn_re = zero(T)
@@ -47,8 +47,8 @@ end
                          α=One(), β=Zero(), nthread::Nothing=nothing, MKN=nothing, contig_axis=nothing) where {T,U,V}
     C, A = real_rep.((_C, _A))
 
-    η = IfElse.ifelse(ArrayInterface.is_lazy_conjugate(_A), StaticInt(-1), StaticInt(1))
-    (+ᶻ, -ᶻ) = IfElse.ifelse(ArrayInterface.is_lazy_conjugate(_C), (-, +), (+, -))
+    η = ifelse(ArrayInterface.is_lazy_conjugate(_A), StaticInt(-1), StaticInt(1))
+    (+ᶻ, -ᶻ) = ifelse(ArrayInterface.is_lazy_conjugate(_C), (-, +), (+, -))
     
     @avxt for n ∈ indices((C, B), (3, 2)), m ∈ indices((C, A), 2)
         Cmn_re = zero(T)
@@ -71,9 +71,9 @@ end
                          α=One(), β=Zero(), MKN=nothing, contig_axis=nothing) where {T,U,V}
     C, A, B = real_rep.((_C, _A, _B))
 
-    η = IfElse.ifelse(ArrayInterface.is_lazy_conjugate(_A), StaticInt(-1), StaticInt(1))
-    θ = IfElse.ifelse(ArrayInterface.is_lazy_conjugate(_B), StaticInt(-1), StaticInt(1))
-    (+ᶻ, -ᶻ) = IfElse.ifelse(ArrayInterface.is_lazy_conjugate(_C), (-, +), (+, -))
+    η = ifelse(ArrayInterface.is_lazy_conjugate(_A), StaticInt(-1), StaticInt(1))
+    θ = ifelse(ArrayInterface.is_lazy_conjugate(_B), StaticInt(-1), StaticInt(1))
+    (+ᶻ, -ᶻ) = ifelse(ArrayInterface.is_lazy_conjugate(_C), (-, +), (+, -))
     ηθ = η*θ
     @avxt for n ∈ indices((C, B), 3), m ∈ indices((C, A), 2)
         Cmn_re = zero(T)
@@ -92,8 +92,8 @@ end
                          α=One(), β=Zero(), MKN=nothing, contig_axis=nothing) where {T,U,V}
     C, B = real_rep.((_C, _B))
 
-    θ = IfElse.ifelse(ArrayInterface.is_lazy_conjugate(_B), StaticInt(-1), StaticInt(1))
-    (+ᶻ, -ᶻ) = IfElse.ifelse(ArrayInterface.is_lazy_conjugate(_C), (-, +), (+, -))
+    θ = ifelse(ArrayInterface.is_lazy_conjugate(_B), StaticInt(-1), StaticInt(1))
+    (+ᶻ, -ᶻ) = ifelse(ArrayInterface.is_lazy_conjugate(_C), (-, +), (+, -))
     
     @avx for n ∈ indices((C, B), 3), m ∈ indices((C, A), (2, 1))
         Cmn_re = zero(T)
@@ -112,8 +112,8 @@ end
                          α=One(), β=Zero(), MKN=nothing, contig_axis=nothing) where {T,U,V}
     C, A = real_rep.((_C, _A))
 
-    η = IfElse.ifelse(ArrayInterface.is_lazy_conjugate(_A), StaticInt(-1), StaticInt(1))
-    (+ᶻ, -ᶻ) = IfElse.ifelse(ArrayInterface.is_lazy_conjugate(_C), (-, +), (+, -))
+    η = ifelse(ArrayInterface.is_lazy_conjugate(_A), StaticInt(-1), StaticInt(1))
+    (+ᶻ, -ᶻ) = ifelse(ArrayInterface.is_lazy_conjugate(_C), (-, +), (+, -))
     
     @avx for n ∈ indices((C, B), (3, 2)), m ∈ indices((C, A), 2)
         Cmn_re = zero(T)
