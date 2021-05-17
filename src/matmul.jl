@@ -237,61 +237,6 @@ end
     return C
 end
 
-
-real_rep(a::AbstractArray{Complex{T}, N}) where {T, N} = PtrArray(Ptr{T}(pointer(a)), (StaticInt(2), size(a)...))
-@inline function _matmul!(_C::AbstractMatrix{Complex{T}}, _A::AbstractMatrix{Complex{U}}, _B::AbstractMatrix{Complex{V}},
-                         α=One(), β=Zero(), nthread::Nothing=nothing, MKN=nothing, contig_axis=nothing) where {T,U,V}
-    C, A, B = real_rep.((_C, _A, _B))
-        #reinterpret(reshape, T, _C), reinterpret(reshape, U, _A), reinterpret(reshape, V, _B)
-    @avxt for n ∈ indices((C, B), 3), m ∈ indices((C, A), 2)
-        Cmn_re = zero(T)
-        Cmn_im = zero(T)
-        for k ∈ indices((A, B), (3, 2))
-            Cmn_re += A[1, m, k] * B[1, k, n] - A[2, m, k] * B[2, k, n]
-            Cmn_im += A[1, m, k] * B[2, k, n] + A[2, m, k] * B[1, k, n]
-        end
-        C[1,m,n] = (real(α) * Cmn_re - imag(α) * Cmn_im) + (real(β) * C[1,m,n] - imag(β) * C[2,m,n])
-        C[2,m,n] = (real(α) * Cmn_im + imag(α) * Cmn_re) + (real(β) * C[2,m,n] + imag(β) * C[1,m,n])
-    end
-    _C
-end
-
-@inline function _matmul!(_C::AbstractMatrix{Complex{T}}, A::AbstractMatrix{U}, _B::AbstractMatrix{Complex{V}},
-                         α=One(), β=Zero(), nthread::Nothing=nothing, MKN=nothing, contig_axis=nothing) where {T,U,V}
-    C, B = real_rep.((_C, _B))
-    #reinterpret(reshape, T, _C),  reinterpret(reshape, V, _B)
-    @avxt for n ∈ indices((C, B), 3), m ∈ indices((C, A), (2, 1))
-        Cmn_re = zero(T)
-        Cmn_im = zero(T)
-        for k ∈ indices((A, B), (2, 2))
-            Cmn_re += A[m, k] * B[1, k, n]
-            Cmn_im += A[m, k] * B[2, k, n]
-        end
-        C[1,m,n] = (real(α) * Cmn_re - imag(α) * Cmn_im) + (real(β) * C[1,m,n] - imag(β) * C[2,m,n])
-        C[2,m,n] = (real(α) * Cmn_im + imag(α) * Cmn_re) + (real(β) * C[2,m,n] + imag(β) * C[1,m,n])
-    end
-    _C
-end
-
-@inline function _matmul!(_C::AbstractMatrix{Complex{T}}, _A::AbstractMatrix{Complex{U}}, B::AbstractMatrix{V},
-                         α=One(), β=Zero(), nthread::Nothing=nothing, MKN=nothing, contig_axis=nothing) where {T,U,V}
-    C, A = real_rep.((_C, _A))
-    #reinterpret(reshape, T, _C),  reinterpret(reshape, V, _A)
-    @avxt for n ∈ indices((C, B), (3, 2)), m ∈ indices((C, A), 2)
-        Cmn_re = zero(T)
-        Cmn_im = zero(T)
-        for k ∈ indices((A, B), (3, 1))
-            Cmn_re += A[1, m, k] * B[k, n]
-            Cmn_im += A[2, m, k] * B[k, n]
-        end
-        C[1,m,n] = (real(α) * Cmn_re - imag(α) * Cmn_im) + (real(β) * C[1,m,n] - imag(β) * C[2,m,n])
-        C[2,m,n] = (real(α) * Cmn_im + imag(α) * Cmn_re) + (real(β) * C[2,m,n] + imag(β) * C[1,m,n])
-    end
-    _C
-end
-
-
-
 @inline function dontpack(pA::AbstractStridedPointer{Ta}, M, K, ::StaticInt{mc}, ::StaticInt{kc}, ::Type{Tc}, nspawn) where {mc, kc, Tc, Ta}
     # TODO: perhaps consider K vs kc by themselves?
     (contiguousstride1(pA) && ((M * K) ≤ (mc * kc) * nspawn >>> 1))
