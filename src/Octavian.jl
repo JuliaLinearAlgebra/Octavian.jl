@@ -32,6 +32,7 @@ include("funcptrs.jl")
 include("macrokernels.jl")
 include("utils.jl")
 include("matmul.jl")
+include("complex_matmul.jl")
 
 include("init.jl") # `Octavian.__init__()` is defined in this file
 

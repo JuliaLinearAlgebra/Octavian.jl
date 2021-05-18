@@ -237,7 +237,6 @@ end
     return C
 end
 
-
 @inline function dontpack(pA::AbstractStridedPointer{Ta}, M, K, ::StaticInt{mc}, ::StaticInt{kc}, ::Type{Tc}, nspawn) where {mc, kc, Tc, Ta}
     # TODO: perhaps consider K vs kc by themselves?
     (contiguousstride1(pA) && ((M * K) ≤ (mc * kc) * nspawn >>> 1))
