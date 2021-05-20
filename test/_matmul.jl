@@ -47,8 +47,11 @@ for T ∈ (ComplexF32, ComplexF64, Complex{Int}, Complex{Int32})
                     C2 = copy(C1)
                     α, β = T(1 - 2im), T(3 + 4im)
                     @test @time(Octavian.matmul!(C1, A, B, α, β)) ≈ Octavian.matmul!(C2, A, B, α, β)
+                    testset_name_suffix === "(coverage)" && break
                 end
+                testset_name_suffix === "(coverage)" && break
             end
+            testset_name_suffix === "(coverage)" && break
         end
     end
 end
