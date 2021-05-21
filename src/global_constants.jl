@@ -65,8 +65,8 @@ function second_cache_size()
     _second_cache_size(cache_size(sc), cache_inclusive(sc))
 end
 
-first_cache_size(::Type{T}) where {T} = first_cache_size() ÷ static_sizeof(T)
-second_cache_size(::Type{T}) where {T} = second_cache_size() ÷ static_sizeof(T)
+first_cache_size(::Val{T}) where {T} = first_cache_size() ÷ static_sizeof(T)
+second_cache_size(::Val{T}) where {T} = second_cache_size() ÷ static_sizeof(T)
 
 bcache_count() = VectorizationBase.num_cache(second_cache())
 

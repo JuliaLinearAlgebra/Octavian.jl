@@ -1,15 +1,16 @@
 
+matmul_params(::Val{T}) where {T <: Base.HWReal} = LoopVectorization.matmul_params()
 
-function block_sizes(::Type{T}, _α, _β, R₁, R₂) where {T}
-    W = pick_vector_width(T)
+function block_sizes(::Val{T}, _α, _β, R₁, R₂) where {T}
+    W = pick_vector_width(Val(T))
     α = _α * W
     β = _β * W
-    L₁ₑ = first_cache_size(T) * R₁
-    L₂ₑ = second_cache_size(T) * R₂
-    block_sizes(W, α, β, L₁ₑ, L₂ₑ)
+    L₁ₑ = first_cache_size(Val(T)) * R₁
+    L₂ₑ = second_cache_size(Val(T)) * R₂
+    block_sizes(Val(T), W, α, β, L₁ₑ, L₂ₑ)
 end
-function block_sizes(W, α, β, L₁ₑ, L₂ₑ)
-    mᵣ, nᵣ = matmul_params()
+function block_sizes(::Val{T}, W, α, β, L₁ₑ, L₂ₑ) where {T}
+    mᵣ, nᵣ = matmul_params(Val(T))
     MᵣW = mᵣ * W
     
     Mc = floortostaticint(√(L₁ₑ)*√(L₁ₑ*β + L₂ₑ*α)/√(L₂ₑ) / MᵣW) * MᵣW
@@ -18,8 +19,8 @@ function block_sizes(W, α, β, L₁ₑ, L₂ₑ)
 
     Mc, Kc, Nc
 end
-function block_sizes(::Type{T}) where {T}
-    block_sizes(T, W₁Default(), W₂Default(), R₁Default(), R₂Default())
+function block_sizes(::Val{T}) where {T}
+    block_sizes(Val(T), W₁Default(), W₂Default(), R₁Default(), R₂Default())
 end
 
 """
@@ -53,7 +54,7 @@ This method is used fairly generally.
 end
 
 """
-  solve_block_sizes(::Type{T}, M, K, N, α, β, R₂, R₃)
+  solve_block_sizes(::Val{T}, M, K, N, α, β, R₂, R₃)
 
 This function returns iteration/blocking descriptions `Mc`, `Kc`, and `Nc` for use when packing both `A` and `B`.
 
@@ -157,7 +158,7 @@ Note that for synchronization on `B`, all threads must have the same values for 
 `K` and `N` will be equal between threads, but `M` may differ. By calculating `Kc` and `Nc`
 independently of `M`, this algorithm guarantees all threads are on the same page.
 """
-@inline function solve_block_sizes(::Type{T}, M, K, N, _α, _β, R₂, R₃, Wfactor) where {T}
+@inline function solve_block_sizes(::Val{T}, M, K, N, _α, _β, R₂, R₃, Wfactor) where {T}
     W = pick_vector_width(T)
     α = _α * W
     β = _β * W
@@ -171,17 +172,17 @@ independently of `M`, this algorithm guarantees all threads are on the same page
     Nblock, Nrem = divrem_fast(N, Niter)
     Nblock_Nrem = Nblock + One()#(Nrem > 0)
 
-    ((Mblock, Mblock_Mrem, Mremfinal, Mrem, Miter), (Kblock, Kblock_Krem, Krem, Kiter)) = solve_McKc(T, M, K, Nblock_Nrem, _α, _β, R₂, R₃, Wfactor)
+    ((Mblock, Mblock_Mrem, Mremfinal, Mrem, Miter), (Kblock, Kblock_Krem, Krem, Kiter)) = solve_McKc(Val(T), M, K, Nblock_Nrem, _α, _β, R₂, R₃, Wfactor)
     
     (Mblock, Mblock_Mrem, Mremfinal, Mrem, Miter), (Kblock, Kblock_Krem, Krem, Kiter), promote(Nblock, Nblock_Nrem, Nrem, Niter)
 end
 # Takes Nc, calcs Mc and Kc
-@inline function solve_McKc(::Type{T}, M, K, Nc, _α, _β, R₂, R₃, Wfactor) where {T}
+@inline function solve_McKc(::Val{T}, M, K, Nc, _α, _β, R₂, R₃, Wfactor) where {T}
     W = pick_vector_width(T)
     α = _α * W
     β = _β * W
-    L₁ₑ =  first_cache_size(T) * R₂
-    L₂ₑ = second_cache_size(T) * R₃
+    L₁ₑ =  first_cache_size(Val(T)) * R₂
+    L₂ₑ = second_cache_size(Val(T)) * R₃
 
     Kc_init⁻¹ = Base.FastMath.max_fast(√(α/L₁ₑ), Nc*inv(L₂ₑ))
     Kiter = cldapproxi(K, Kc_init⁻¹) # approximate `ceil`
@@ -203,8 +204,8 @@ end
 Finds first combination of `Miter` and `Niter` that doesn't make `M` too small while producing `Miter * Niter = num_cores()`.
 This would be awkard if there are computers with prime numbers of cores. I should probably consider that possibility at some point.
 """
-@inline function find_first_acceptable(M, W)
-    Mᵣ, Nᵣ = matmul_params()
+@inline function find_first_acceptable(::Val{T}, M, W) where {T}
+    Mᵣ, Nᵣ = matmul_params(Val(T))
     factors = calc_factors()
     for (miter, niter) ∈ factors
         if miter * (StaticInt(2) * Mᵣ * W) ≤ M + (W + W)
@@ -218,9 +219,9 @@ end
 
 Splits both `M` and `N` into blocks when trying to spawn a large number of threads relative to the size of the matrices.
 """
-@inline function divide_blocks(M, Ntotal, _nspawn, W)
-    _nspawn == num_cores() && return find_first_acceptable(M, W)
-    mᵣ, nᵣ = matmul_params()
+@inline function divide_blocks(::Val{T}, M, Ntotal, _nspawn, W) where {T}
+    _nspawn == num_cores() && return find_first_acceptable(Val(T), M, W)
+    mᵣ, nᵣ = matmul_params(Val(T))
     Miter = clamp(div_fast(M, W*mᵣ * MᵣW_mul_factor()), 1, _nspawn)
     nspawn = div_fast(_nspawn, Miter)
     if (nspawn ≤ 1) & (Miter < _nspawn)
