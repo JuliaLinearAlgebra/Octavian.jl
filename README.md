@@ -57,7 +57,7 @@ Environment:
   JULIA_NUM_THREADS = 36
 ```
 Resulted in the following:
-![octavian10980xebench](https://github.com/JuliaLinearAlgebra/Octavian.jl/tree/master/docs/src/assets/bench10980xe.png)
+![octavian10980xebench](https://raw.githubusercontent.com/JuliaLinearAlgebra/Octavian.jl/master/docs/src/assets/bench10980xe.png)
 
 ## Related Packages
 
