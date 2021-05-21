@@ -75,7 +75,7 @@ end
     θ = ifelse(ArrayInterface.is_lazy_conjugate(_B), StaticInt(-1), StaticInt(1))
     (+ᶻ, -ᶻ) = ifelse(ArrayInterface.is_lazy_conjugate(_C), (-, +), (+, -))
     ηθ = η*θ
-    @avxt for n ∈ indices((C, B), 3), m ∈ indices((C, A), 2)
+    @avx for n ∈ indices((C, B), 3), m ∈ indices((C, A), 2)
         Cmn_re = zero(T)
         Cmn_im = zero(T)
         for k ∈ indices((A, B), (3, 2))

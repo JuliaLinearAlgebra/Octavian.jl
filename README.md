@@ -26,6 +26,39 @@ matrix multiplication on the CPU, built on top of
 Please see the
 [Octavian documentation](https://JuliaLinearAlgebra.github.io/Octavian.jl/stable).
 
+## Benchmarks
+
+You can run benchmarks using [BLASBenchmarksCPU.jl](https://github.com/JuliaLinearAlgebra/BLASBenchmarksCPU.jl):
+```julia
+julia> @time using BLASBenchmarksCPU
+  7.278954 seconds (17.59 M allocations: 1.107 GiB, 6.22% gc time)
+
+julia> rb = runbench(sizes = logspace(10, 1_000, 200)); plot(rb, displayplot = false);
+Progress: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| Time: 2:25:04
+  Size:               (1000, 1000, 1000)
+  BLIS:               (MedianGFLOPS = 1051.0, MaxGFLOPS = 1476.0)
+  Gaius:              (MedianGFLOPS = 765.8, MaxGFLOPS = 941.7)
+  MKL:                (MedianGFLOPS = 1348.0, MaxGFLOPS = 1589.0)
+  Octavian:           (MedianGFLOPS = 1816.0, MaxGFLOPS = 1895.0)
+  OpenBLAS:           (MedianGFLOPS = 1254.0, MaxGFLOPS = 1385.0)
+  Tullio:             (MedianGFLOPS = 1102.0, MaxGFLOPS = 1196.0)
+  LoopVectorization:  (MedianGFLOPS = 1552.0, MaxGFLOPS = 1721.0)
+
+julia> versioninfo()
+Julia Version 1.7.0-DEV.1124
+Commit d18cf93bac* (2021-05-19 16:11 UTC)
+Platform Info:
+  OS: Linux (x86_64-generic-linux)
+  CPU: Intel(R) Core(TM) i9-10980XE CPU @ 3.00GHz
+  WORD_SIZE: 64
+  LIBM: libopenlibm
+  LLVM: libLLVM-11.0.1 (ORCJIT, cascadelake)
+Environment:
+  JULIA_NUM_THREADS = 36
+```
+Resulted in the following:
+![octavian10980xebench](https://github.com/JuliaLinearAlgebra/Octavian.jl/tree/master/docs/src/assets/bench10980xe.png)
+
 ## Related Packages
 
 | Julia Package                                                    | CPU | GPU |
