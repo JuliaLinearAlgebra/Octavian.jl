@@ -1,11 +1,11 @@
 
 if Sys.WORD_SIZE == 32
-    @inline function first_cache_buffer(::Type{T}) where {T}
+    @inline function first_cache_buffer(::Val{T}) where {T}
         reinterpret(Ptr{T}, ACACHEPTR[] + Threads.threadid() * first_cache_size() - first_cache_size())
     end
 else
-    @inline function first_cache_buffer(::Type{T}) where {T}
-        MemoryBuffer{T}(undef, first_cache_size(T))
+    @inline function first_cache_buffer(::Val{T}) where {T}
+        MemoryBuffer{T}(undef, first_cache_size(Val(T)))
     end
 end
 

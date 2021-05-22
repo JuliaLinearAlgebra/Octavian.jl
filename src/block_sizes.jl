@@ -2,7 +2,7 @@
 matmul_params(::Val{T}) where {T <: Base.HWReal} = LoopVectorization.matmul_params()
 
 function block_sizes(::Val{T}, _α, _β, R₁, R₂) where {T}
-    W = pick_vector_width(Val(T))
+    W = pick_vector_width(T)
     α = _α * W
     β = _β * W
     L₁ₑ = first_cache_size(Val(T)) * R₁

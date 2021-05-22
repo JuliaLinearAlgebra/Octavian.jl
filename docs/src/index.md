@@ -28,6 +28,6 @@ In general:
 
 !!! note
 
-    Octavian's tasks can interfere with tasks spawned by Base.Threads, resulting in much slower execution times when used together. This can be avoided by using threading utilities from [CheapThreads](https://github.com/JuliaSIMD/CheapThreads.jl) or [LoopVectorization](https://github.com/JuliaSIMD/LoopVectorization.jl/) instead. See this [Discourse post](https://discourse.julialang.org/t/odd-benchmarktools-timings-using-threads-and-octavian/59838) for more information.
+    Octavian's tasks can interfere with tasks spawned by Base.Threads, resulting in much slower execution times when used together. This can be avoided by using threading utilities from [Polyester](https://github.com/JuliaSIMD/Polyester.jl) or [LoopVectorization](https://github.com/JuliaSIMD/LoopVectorization.jl/) instead. See this [Discourse post](https://discourse.julialang.org/t/odd-benchmarktools-timings-using-threads-and-octavian/59838) for more information.
 
 

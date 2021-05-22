@@ -8,7 +8,7 @@ function matmul_st_only_pack_A!(
 
     mᵣ, nᵣ = matmul_params(Val(T))
     ((Mblock, Mblock_Mrem, Mremfinal, Mrem, Miter), (Kblock, Kblock_Krem, Krem, Kiter)) =
-        solve_McKc(T, M, K, N, StaticFloat64{W₁}(), StaticFloat64{W₂}(), StaticFloat64{R₁}(), StaticFloat64{R₂}(), mᵣ)
+        solve_McKc(Val(T), M, K, N, StaticFloat64{W₁}(), StaticFloat64{W₂}(), StaticFloat64{R₁}(), StaticFloat64{R₂}(), mᵣ)
     for ko ∈ CloseOpen(Kiter)
         ksize = ifelse(ko < Krem, Kblock_Krem, Kblock)
         let A = A, C = C
@@ -280,7 +280,7 @@ function matmulsplitn!(C::AbstractStridedPointer{T}, A, B, α, β, ::StaticInt{M
     Mᵣ, Nᵣ = matmul_params(Val(T))
     W = pick_vector_width(T)
     MᵣW = Mᵣ*W
-    _Mblocks, Nblocks = divide_blocks(M, cld_fast(N, Nᵣ), nspawn, W)
+    _Mblocks, Nblocks = divide_blocks(Val(T), M, cld_fast(N, Nᵣ), nspawn, W)
     Mbsize, Mrem, Mremfinal, Mblocks = split_m(M, _Mblocks, W)
     # Nblocks = min(N, _Nblocks)
     Nbsize, Nrem = divrem_fast(N, Nblocks)
