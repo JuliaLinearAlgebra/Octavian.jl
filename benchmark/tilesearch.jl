@@ -1,18 +1,17 @@
 
 using Octavian, VectorizationBase
-using Octavian: StaticFloat64
+const F64 = Octavian.StaticFloat64
 function matmul_pack_ab!(C, A, B, ::Val{W₁}, ::Val{W₂}, ::Val{R₁}, ::Val{R₂}) where {W₁, W₂, R₁, R₂}
   M, N = size(C); K = size(B,1)
   zc, za, zb = Octavian.zstridedpointer.((C,A,B))
   nspawn = VectorizationBase.num_cores()
+  t = Inf
   GC.@preserve C A B begin
-    @elapsed(
-      Octavian.matmul_pack_A_and_B!(
-        zc, za, zb, StaticInt{1}(), StaticInt{0}(), M, K, N, nspawn,
-        StaticFloat64{W₁}(), StaticFloat64{W₂}(), StaticFloat64{R₁}(), StaticFloat64{R₂}()
-      )
-    )
+    for _ ∈ 1:5
+      t = min(t, @elapsed(Octavian.matmul_pack_A_and_B!(C, A, B, Octavian.One(), Octavian.Zero(), M, K, N, Int(nspawn), F64(W₁), F64(W₂), F64(R₁), F64(R₂))))
+    end
   end
+  return t
 end
 
 
