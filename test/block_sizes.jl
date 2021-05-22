@@ -1,9 +1,9 @@
 @time @testset "block_sizes" begin
 
     for T ∈ [Float32, Float64, Int16, Int32, Int64, UInt16, UInt32, UInt64]
-        @inferred Octavian.block_sizes(T)
-        @inferred Octavian.first_cache_size(T)
-        @inferred Octavian.second_cache_size(T)
+        @inferred Octavian.block_sizes(Val(T))
+        @inferred Octavian.first_cache_size(Val(T))
+        @inferred Octavian.second_cache_size(Val(T))
     end
     
     @inferred Octavian.MᵣW_mul_factor()
