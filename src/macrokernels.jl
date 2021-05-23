@@ -128,7 +128,7 @@ end
   Apack = default_zerobased_stridedpointer(bufferptr, (One(), mᵣW, mᵣW * K)) # mᵣW x K x cld(M, mᵣW)
   Apack, buffer
 end
-@inline function packaloopmul!(
+function packaloopmul!(
     C::AbstractStridedPointer{T},
     A::AbstractStridedPointer,
     B::AbstractStridedPointer,
@@ -137,9 +137,6 @@ end
   Ãₚ, buffer = alloc_a_pack(K, Val(T))
   GC.@preserve buffer begin
     Mᵣ, Nᵣ = matmul_params(Val(T))
-    MᵣW = Mᵣ * pick_vector_width(T)
-    # C3 = splitfirstdim(C, MᵣW)
-    # A3 = splitfirstdim(A, MᵣW)
     packamul!(C, Ãₚ, A, B, α, β, M, K, Nᵣ)
     ploopmul!(gesp(C, (Zero(), Nᵣ)), Ãₚ, gesp(B, (Zero(), Nᵣ)), α, β, M, K, N - Nᵣ)
   end
