@@ -6,9 +6,9 @@ function matmul_st_only_pack_A!(
     α, β, M, K, N, ::StaticFloat64{W₁}, ::StaticFloat64{W₂}, ::StaticFloat64{R₁}, ::StaticFloat64{R₂}
 ) where {T, W₁, W₂, R₁, R₂}
 
-    mᵣ, nᵣ = matmul_params()
+    mᵣ, nᵣ = matmul_params(Val(T))
     ((Mblock, Mblock_Mrem, Mremfinal, Mrem, Miter), (Kblock, Kblock_Krem, Krem, Kiter)) =
-        solve_McKc(T, M, K, N, StaticFloat64{W₁}(), StaticFloat64{W₂}(), StaticFloat64{R₁}(), StaticFloat64{R₂}(), mᵣ)
+        solve_McKc(Val(T), M, K, N, StaticFloat64{W₁}(), StaticFloat64{W₂}(), StaticFloat64{R₁}(), StaticFloat64{R₂}(), mᵣ)
     for ko ∈ CloseOpen(Kiter)
         ksize = ifelse(ko < Krem, Kblock_Krem, Kblock)
         let A = A, C = C
@@ -37,10 +37,10 @@ end
 function matmul_st_pack_A_and_B!(
     C::AbstractStridedPointer{T}, A::AbstractStridedPointer, B::AbstractStridedPointer, α, β, M, K, N, W₁, W₂, R₁, R₂, tid
 ) where {T}
-    mᵣ, nᵣ = matmul_params()
+    mᵣ, nᵣ = matmul_params(Val(T))
     # TODO: if this is nested in other threaded code, use only a piece of BCACHE and make R₂ (and thus L₂ₑ) smaller
     (Mblock, Mblock_Mrem, Mremfinal, Mrem, Miter), (Kblock, Kblock_Krem, Krem, Kiter), (Nblock, Nblock_Nrem, Nrem, Niter) =
-        solve_block_sizes(T, M, K, N, W₁, W₂, R₁, R₂, mᵣ)
+        solve_block_sizes(Val(T), M, K, N, W₁, W₂, R₁, R₂, mᵣ)
 
     bcache = _use_bcache(tid)
     L3ptr = Base.unsafe_convert(Ptr{T}, pointer(bcache))
@@ -108,7 +108,7 @@ end
 # These methods must be compile time constant
 maybeinline(::Any, ::Any, ::Any, ::Any) = false
 function maybeinline(::StaticInt{M}, ::StaticInt{N}, ::Type{T}, ::Val{true}) where {M,N,T}
-    mᵣ, nᵣ = matmul_params()
+    mᵣ, nᵣ = matmul_params(Val(T))
     static_sizeof(T) * StaticInt{M}() * StaticInt{N}() < StaticInt{176}() * mᵣ * nᵣ
 end
 function maybeinline(::StaticInt{M}, ::StaticInt{N}, ::Type{T}, ::Val{false}) where {M,N,T}
@@ -159,7 +159,7 @@ Otherwise, based on the array's size, whether they are transposed, and whether t
     end
     pA = zstridedpointer(A); pB = zstridedpointer(B); pC = zstridedpointer(C);
     Cb = preserve_buffer(C); Ab = preserve_buffer(A); Bb = preserve_buffer(B);
-    Mc, Kc, Nc = block_sizes(T); mᵣ, nᵣ = matmul_params();
+    Mc, Kc, Nc = block_sizes(Val(T)); mᵣ, nᵣ = matmul_params(Val(T));
     GC.@preserve Cb Ab Bb begin
         if maybeinline(M, N, T, ArrayInterface.is_column_major(A)) # check MUST be compile-time resolvable
             inlineloopmul!(pC, pA, pB, One(), Zero(), M, K, N)
@@ -187,7 +187,7 @@ function matmul_only_β!(C::AbstractMatrix{T}, β) where T
 end
 
 function matmul_st_pack_dispatcher!(pC::AbstractStridedPointer{T}, pA, pB, α, β, M, K, N) where {T}
-    Mc, Kc, Nc = block_sizes(T)
+    Mc, Kc, Nc = block_sizes(Val(T))
     if (contiguousstride1(pB) ? (Kc * Nc ≥ K * N) : (firstbytestride(pB) ≤ 1600))
         matmul_st_only_pack_A!(pC, pA, pB, α, β, M, K, N, W₁Default(), W₂Default(), R₁Default(), R₂Default())
     # elseif notnested !== nothing && notnested
@@ -254,7 +254,7 @@ end
     W = pick_vector_width(T)
     pA = zstridedpointer(A); pB = zstridedpointer(B); pC = zstridedpointer(C);
     Cb = preserve_buffer(C); Ab = preserve_buffer(A); Bb = preserve_buffer(B);
-    mᵣ, nᵣ = matmul_params()
+    mᵣ, nᵣ = matmul_params(Val(T))
     GC.@preserve Cb Ab Bb begin
         if maybeinline(M, N, T, ArrayInterface.is_column_major(A)) # check MUST be compile-time resolvable
             inlineloopmul!(pC, pA, pB, One(), Zero(), M, K, N)
@@ -277,10 +277,10 @@ end
 
 # This funciton is sort of a `pun`. It splits aggressively (it does a lot of "splitin'"), which often means it will split-N.
 function matmulsplitn!(C::AbstractStridedPointer{T}, A, B, α, β, ::StaticInt{Mc}, M, K, N, nspawn, ::Val{PACK}) where {T, Mc, PACK}
-    Mᵣ, Nᵣ = matmul_params()
+    Mᵣ, Nᵣ = matmul_params(Val(T))
     W = pick_vector_width(T)
     MᵣW = Mᵣ*W
-    _Mblocks, Nblocks = divide_blocks(M, cld_fast(N, Nᵣ), nspawn, W)
+    _Mblocks, Nblocks = divide_blocks(Val(T), M, cld_fast(N, Nᵣ), nspawn, W)
     Mbsize, Mrem, Mremfinal, Mblocks = split_m(M, _Mblocks, W)
     # Nblocks = min(N, _Nblocks)
     Nbsize, Nrem = divrem_fast(N, Nblocks)
@@ -316,9 +316,9 @@ end
 function __matmul!(
     C::AbstractStridedPointer{T}, A::AbstractStridedPointer, B::AbstractStridedPointer, α, β, M, K, N, nthread
 ) where {T}
-    Mᵣ, Nᵣ = matmul_params()
+    Mᵣ, Nᵣ = matmul_params(Val(T))
     W = pick_vector_width(T)
-    Mc, Kc, Nc = block_sizes(T)
+    Mc, Kc, Nc = block_sizes(Val(T))
     MᵣW = Mᵣ*W
 
     # Not taking the fast path
@@ -350,7 +350,7 @@ function __matmul!(
     # MᵣW * (MᵣW_mul_factor - One()) # gives a smaller Mc, then
     # if 2M/nspawn is less than it, we don't don't `A`
     # First check is: do we just want to split aggressively?
-    mᵣ, nᵣ = matmul_params()
+    mᵣ, nᵣ = matmul_params(Val(T))
     if dontpack(A, M, K, Mc, Kc, T, nspawn) || (W ≥ M) || (nᵣ*((num_cores() ≥ StaticInt(8)) ? max(nspawn,8) : 8) ≥ N)
         # `nᵣ*nspawn ≥ N` is needed at the moment to avoid accidentally splitting `N` to be `< nᵣ` while packing
         # Should probably handle that with a smarter splitting function...
@@ -377,7 +377,7 @@ function matmul_pack_A_and_B!(
     tospawn::Int, ::StaticFloat64{W₁}, ::StaticFloat64{W₂}, ::StaticFloat64{R₁}, ::StaticFloat64{R₂}#, ::Val{1}
 ) where {T,W₁,W₂,R₁,R₂}
     W = pick_vector_width(T)
-    mᵣ, nᵣ = matmul_params()
+    mᵣ, nᵣ = matmul_params(Val(T))
     mᵣW = mᵣ * W
     # atomicsync = Ref{NTuple{16,UInt}}()
     Mbsize, Mrem, Mremfinal, _to_spawn = split_m(M, tospawn, W) # M is guaranteed to be > W because of `W ≥ M` condition for `jmultsplitn!`...
@@ -412,7 +412,7 @@ function sync_mul!(
 ) where {T, W₁, W₂, R₁, R₂}
 
     (Mblock, Mblock_Mrem, Mremfinal, Mrem, Miter), (Kblock, Kblock_Krem, Krem, Kiter), (Nblock, Nblock_Nrem, Nrem, Niter) =
-        solve_block_sizes(T, M, K, N, StaticFloat64{W₁}(), StaticFloat64{W₂}(), StaticFloat64{R₁}(), StaticFloat64{R₂}(), One())
+        solve_block_sizes(Val(T), M, K, N, StaticFloat64{W₁}(), StaticFloat64{W₂}(), StaticFloat64{R₁}(), StaticFloat64{R₂}(), One())
 
     # atomics = atomicp + 8sizeof(UInt)
     sync_iters = zero(UInt)
