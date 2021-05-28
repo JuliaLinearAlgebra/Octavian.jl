@@ -355,7 +355,7 @@ function __matmul!(
         # `nᵣ*nspawn ≥ N` is needed at the moment to avoid accidentally splitting `N` to be `< nᵣ` while packing
         # Should probably handle that with a smarter splitting function...
         matmulsplitn!(C, A, B, α, β, Mc, M, K, N, nspawn, Val{false}())
-    elseif ((nspawn*(W+W) > M) || (contiguousstride1(B) ? (roundtostaticint(Kc * Nc * R₂Default()) ≥ K * N) : (firstbytestride(B) ≤ 1600)))
+    elseif (bcache_count() === Zero()) || ((nspawn*(W+W) > M) || (contiguousstride1(B) ? (roundtostaticint(Kc * Nc * R₂Default()) ≥ K * N) : (firstbytestride(B) ≤ 1600)))
         matmulsplitn!(C, A, B, α, β, Mc, M, K, N, nspawn, Val{true}())
     else # TODO: Allow splitting along `N` for `matmul_pack_A_and_B!`
         matmul_pack_A_and_B!(C, A, B, α, β, M, K, N, nspawn, W₁Default(), W₂Default(), R₁Default(), R₂Default())
