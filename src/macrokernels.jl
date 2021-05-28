@@ -243,9 +243,9 @@ end
 ) where {T}
     Ãₚ, buffer = alloc_a_pack(A, M, T)
     GC.@preserve buffer begin
-        Mᵣ, Nᵣ = matmul_params()
-        packamul!(C, Ãₚ, A, B, α, β, M, K, Nᵣ)
-        loopmul!(gesp(C, (Zero(), Nᵣ)), Ãₚ, gesp(B, (Zero(), Nᵣ)), α, β, M, K, N - Nᵣ)
+      Mᵣ, Nᵣ = matmul_params()
+      packamul!(C, Ãₚ, A, B, α, β, M, K, Nᵣ)
+      loopmul!(gesp(C, (Zero(), Nᵣ)), Ãₚ, gesp(B, (Zero(), Nᵣ)), α, β, M, K, N - Nᵣ)
     end
     nothing
 end
