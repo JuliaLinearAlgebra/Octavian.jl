@@ -91,7 +91,6 @@ end
     nothing
 end
 @inline function ploopmul!(C::AbstractStridedPointer{T}, Ãₚ, B, α, β, M, K, N) where {T}
-  1+1
   @kernel false for n ∈ CloseOpen(N), m ∈ CloseOpen(M)
     Cₘₙ = zero(eltype(C))
     for k ∈ CloseOpen(K)
@@ -105,7 +104,6 @@ end
     C::AbstractStridedPointer{T}, Ãₚ, A, B,
     α, β, M, K, N
   ) where {T}
-  1+1
   @kernel true for n ∈ CloseOpen(N), m ∈ CloseOpen(M)
     Cₘₙ = zero(eltype(C))
     for k ∈ CloseOpen(K)
