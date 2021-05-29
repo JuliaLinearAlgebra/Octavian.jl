@@ -51,6 +51,7 @@ for T ∈ (ComplexF32, ComplexF64, Complex{Int}, Complex{Int32})
             end
         end
     end
+    testset_name_suffix === "(coverage)" && break
 end
 
 @time @testset "Matrix Multiply Float64 $(testset_name_suffix)" begin

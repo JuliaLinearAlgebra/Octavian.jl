@@ -14,14 +14,19 @@ function __init__()
 end
 
 function init_bcache()
-    BCACHEPTR[] = VectorizationBase.valloc(second_cache_size() * bcache_count(), Cvoid, ccall(:jl_getpagesize, Int, ()))
+    if bcache_count() ≢ Zero()
+        BCACHEPTR[] = VectorizationBase.valloc(second_cache_size() * bcache_count(), Cvoid, ccall(:jl_getpagesize, Int, ()))
+    end
     nothing
 end
 
-function init_acache()
-    Sys.WORD_SIZE ≤ 32 || return
-    ACACHEPTR[] = VectorizationBase.valloc(first_cache_size() * init_num_tasks(), Cvoid, ccall(:jl_getpagesize, Int, ()))
-    nothing
+if Sys.WORD_SIZE ≤ 32
+    function init_acache()
+        ACACHEPTR[] = VectorizationBase.valloc(first_cache_size() * init_num_tasks(), Cvoid, ccall(:jl_getpagesize, Int, ()))
+        nothing
+    end
+else
+    init_acache() = nothing
 end
 
 function init_num_tasks()

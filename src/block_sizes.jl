@@ -162,8 +162,8 @@ independently of `M`, this algorithm guarantees all threads are on the same page
     W = pick_vector_width(T)
     α = _α * W
     β = _β * W
-    L₁ₑ =  first_cache_size(T) * R₂
-    L₂ₑ = second_cache_size(T) * R₃
+    L₁ₑ =  first_cache_size(Val(T)) * R₂
+    L₂ₑ = second_cache_size(Val(T)) * R₃
 
     # Nc_init = round(Int, √(L₂ₑ)*√(α * L₂ₑ + β * L₁ₑ)/√(L₁ₑ))
     Nc_init⁻¹ = √(L₁ₑ) / (√(L₂ₑ)*√(α * L₂ₑ + β * L₁ₑ))
