@@ -6,8 +6,8 @@
 [![Continuous Integration (Julia nightly)][ci-julia-nightly-img]][ci-julia-nightly-url]
 [![Code Coverage][codecov-img]][codecov-url]
 
-[docs-stable-url]:      https://JuliaLinearAlgebra.github.io/Octavian.jl/stable
-[docs-dev-url]:         https://JuliaLinearAlgebra.github.io/Octavian.jl/dev
+[docs-stable-url]:      https://JuliaLinearAlgebra.org/Octavian.jl/stable
+[docs-dev-url]:         https://JuliaLinearAlgebra.org/Octavian.jl/dev
 [ci-url]:               https://github.com/JuliaLinearAlgebra/Octavian.jl/actions?query=workflow%3ACI
 [ci-julia-nightly-url]: https://github.com/JuliaLinearAlgebra/Octavian.jl/actions?query=workflow%3A%22CI+%28Julia+nightly%29%22
 [codecov-url]:          https://codecov.io/gh/JuliaLinearAlgebra/Octavian.jl
@@ -24,7 +24,7 @@ matrix multiplication on the CPU, built on top of
 [LoopVectorization.jl](https://github.com/chriselrod/LoopVectorization.jl).
 
 Please see the
-[Octavian documentation](https://JuliaLinearAlgebra.github.io/Octavian.jl/stable).
+[Octavian documentation](https://JuliaLinearAlgebra.org/Octavian.jl/stable).
 
 ## Benchmarks
 
