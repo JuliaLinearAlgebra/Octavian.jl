@@ -7,8 +7,8 @@ function matmul_pack_ab!(C, A, B, ::Val{W₁}, ::Val{W₂}, ::Val{R₁}, ::Val{R
   nspawn = VectorizationBase.num_cores()
   t = Inf
   GC.@preserve C A B begin
-    for _ ∈ 1:5
-      t = min(t, @elapsed(Octavian.matmul_pack_A_and_B!(C, A, B, Octavian.One(), Octavian.Zero(), M, K, N, Int(nspawn), F64(W₁), F64(W₂), F64(R₁), F64(R₂))))
+    for _ ∈ 1:2
+      t = min(t, @elapsed(Octavian.matmul_pack_A_and_B!(zc, za, zb, Octavian.One(), Octavian.Zero(), M, K, N, Int(nspawn), F64(W₁), F64(W₂), F64(R₁), F64(R₂))))
     end
   end
   return t
@@ -21,7 +21,7 @@ function bench_size(Cs, As, Bs, ::Val{W₁}, ::Val{W₂}, ::Val{R₁}, ::Val{R�
     else
         matmul_pack_ab!(last(Cs), last(As), last(Bs), Val{W₁}(), Val{W₂}(), Val{R₁}(), Val{R₂}())
     end
-    repeat = 10
+    repeat = 1
     gflop = 0.0
     for _ ∈ 1:repeat
         for (C,A,B) ∈ zip(Cs,As,Bs)
@@ -67,51 +67,50 @@ T = Float64
 min_size = round(Int, sqrt(0.65 * Octavian.VectorizationBase.cache_size(Val(3)) / sizeof(T)))
 max_size = round(Int, sqrt( 32  * Octavian.VectorizationBase.cache_size(Val(3)) / sizeof(T)))
 
-SR = size_range(max_size, min_size, 100);
+SR = size_range(max_size, min_size, 400);
 const CsConst, AsConst, BsConst = matrix_range(SR, T);
 
 
-using Hyperopt
-ho = @hyperopt for i = 100, sampler=GPSampler(Max),
-    W₁ = LinRange(0.001, 0.3, 1000),
-    W₂ = LinRange(0.01, 2.0, 1000),
-    R₁ = LinRange(0.3, 0.9, 1000),
-    R₂ = LinRange(0.4, 0.99, 1000)
-    print("Params: ", (W₁, W₂, R₁, R₂), "; ")
-    gflop = bench_size(CsConst, AsConst, BsConst, Val{W₁}(), Val{W₂}(), Val{R₁}(), Val{R₂}())
-    println(gflop)
-    gflop
-end
+# using Hyperopt
+# ho = @hyperopt for i = 100, sampler=GPSampler(Max),
+#     W₁ = LinRange(0.001, 0.3, 1000),
+#     W₂ = LinRange(0.01, 2.0, 1000),
+#     R₁ = LinRange(0.3, 0.9, 1000),
+#     R₂ = LinRange(0.4, 0.99, 1000)
+#     print("Params: ", (W₁, W₂, R₁, R₂), "; ")
+#     gflop = bench_size(CsConst, AsConst, BsConst, Val{W₁}(), Val{W₂}(), Val{R₁}(), Val{R₂}())
+#     println(gflop)
+#     gflop
+# end
 
-function restart(ho, iterations = 100)
-    olditer = ho.iterations
-    ho2 = Hyperoptimizer(
-        olditer + iterations,
-        ho.params,
-        ho.candidates,
-        ho.history[1:olditer],
-        ho.results[1:olditer],
-        ho.sampler#,
-        # ho.objective
-    )
-    # Hyperopt.optimize(ho2)
-    for nt ∈ ho2
-        (i, W₁, W₂, R₁, R₂) = nt
-        print("Params: ", (W₁, W₂, R₁, R₂), "; ")
-        gflop = bench_size(CsConst, AsConst, BsConst, Val{W₁}(), Val{W₂}(), Val{R₁}(), Val{R₂}())
-        println(gflop)
-        push!(ho2.results, gflop)
-    end
-    ho2
-end
-ho2 = restart(ho, 400)
+# function restart(ho, iterations = 100)
+#     olditer = ho.iterations
+#     ho2 = Hyperoptimizer(
+#         olditer + iterations,
+#         ho.params,
+#         ho.candidates,
+#         ho.history[1:olditer],
+#         ho.results[1:olditer],
+#         ho.sampler#,
+#         # ho.objective
+#     )
+#     # Hyperopt.optimize(ho2)
+#     for nt ∈ ho2
+#         (i, W₁, W₂, R₁, R₂) = nt
+#         print("Params: ", (W₁, W₂, R₁, R₂), "; ")
+#         gflop = bench_size(CsConst, AsConst, BsConst, Val{W₁}(), Val{W₂}(), Val{R₁}(), Val{R₂}())
+#         println(gflop)
+#         push!(ho2.results, gflop)
+#     end
+#     ho2
+# end
+# ho2 = restart(ho, 400)
 
 
 
 function matmul_objective(params)
     print("Params: ", params, "; ")
     W₁, W₂, R₁, R₂ = params
-    # print("(W₁ = $(round(W₁, sigdigits=4)); W₂ = $(round(W₂, sigdigits=4)); R₁ = $(round(R₁, sigdigits=4)); R₂ = $(round(R₂, sigdigits=4))); ")
     gflop = bench_size(CsConst, AsConst, BsConst, Val{W₁}(), Val{W₂}(), Val{R₁}(), Val{R₂}())
     println(gflop)
     - gflop
@@ -119,9 +118,10 @@ end
 using Optim
 hours = 60.0*60.0; days = 24hours;
 init = Float64[Octavian.W₁Default(), Octavian.W₂Default(), Octavian.R₁Default(), Octavian.R₂Default()]
+# init = [0.001, 0.9754033943603924, 0.5711159869399494, 0.7547361860432168];
 
 opt = Optim.optimize(
-    matmul_objective, init, ParticleSwarm(lower = [0.001, 0.01, 0.3, 0.4], upper = [0.2, 2.0, 0.9, 0.99]),
+    matmul_objective, init, ParticleSwarm(lower = [0.0001, 0.8, 0.55, 0.725], upper = [0.002, 1.2, 0.6, 0.775]),
     Optim.Options(iterations = 10^6, time_limit = 8hours)
 );
 
