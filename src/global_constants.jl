@@ -31,10 +31,10 @@ W₂Default_arch(::Union{Val{:znver2},Val{:znver3}}) = StaticFloat64{0.993489411
 R₁Default_arch(::Union{Val{:znver2},Val{:znver3}}) = StaticFloat64{0.6052218809954467}()
 R₂Default_arch(::Union{Val{:znver2},Val{:znver3}}) = StaticFloat64{0.7594052633561165}()
 
-W₁Default_arch(_) = StaticFloat64{0.1}()
-W₂Default_arch(_) = StaticFloat64{0.15989396641218157}()
-R₁Default_arch(_) = StaticFloat64{0.4203583148344484}()
-R₂Default_arch(_) = StaticFloat64{0.8775382433240162}()
+W₁Default_arch(_) = StaticFloat64{0.05846951331683783}()
+W₂Default_arch(_) = StaticFloat64{0.16070447575367697}()
+R₁Default_arch(_) = StaticFloat64{0.5370318382263098}()
+R₂Default_arch(_) = StaticFloat64{0.5584398748982029}()
 
 W₁Default(::False) = W₁Default_arch(VectorizationBase.cpu_name())
 W₂Default(::False) = W₂Default_arch(VectorizationBase.cpu_name())

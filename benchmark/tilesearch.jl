@@ -118,10 +118,12 @@ end
 using Optim
 hours = 60.0*60.0; days = 24hours;
 init = Float64[Octavian.W₁Default(), Octavian.W₂Default(), Octavian.R₁Default(), Octavian.R₂Default()]
+lower = 0.75 .* init;
+upper = [1.25init[1], 1.25init[2], 0.75*init[3] + 0.25, 0.75*init[4] + 0.25];
 # init = [0.001, 0.9754033943603924, 0.5711159869399494, 0.7547361860432168];
 
 opt = Optim.optimize(
-    matmul_objective, init, ParticleSwarm(lower = [0.0001, 0.8, 0.55, 0.725], upper = [0.002, 1.2, 0.6, 0.775]),
+    matmul_objective, init, ParticleSwarm(lower = lower, upper = upper),
     Optim.Options(iterations = 10^6, time_limit = 8hours)
 );
 
