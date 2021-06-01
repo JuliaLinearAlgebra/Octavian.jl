@@ -1,7 +1,7 @@
 name = "Octavian"
 uuid = "6fd5a793-0b7e-452c-907f-f8bfe9c57db4"
 authors = ["Mason Protter", "Chris Elrod", "Dilum Aluthge", "contributors"]
-version = "0.2.16"
+version = "0.2.17"
 
 [deps]
 ArrayInterface = "4fba245c-0d91-5ea0-9b3e-6abc04ee57a9"
