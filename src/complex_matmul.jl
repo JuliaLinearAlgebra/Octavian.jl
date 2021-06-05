@@ -1,16 +1,16 @@
 real_rep(a::AbstractArray{Complex{T}, N}) where {T, N} = reinterpret(reshape, T, a)
 #PtrArray(Ptr{T}(pointer(a)), (StaticInt(2), size(a)...))
 
-@inline function _matmul!(_C::AbstractMatrix{Complex{T}}, _A::AbstractMatrix{Complex{U}}, _B::AbstractMatrix{Complex{V}},
+@inline function _matmul!(_C::AbstractVecOrMat{Complex{T}}, _A::AbstractMatrix{Complex{U}}, _B::AbstractVecOrMat{Complex{V}},
                          α=One(), β=Zero(), nthread::Nothing=nothing, MKN=nothing, contig_axis=nothing) where {T,U,V}
-    C, A, B =  real_rep.((_C, _A, _B))
+    C, A, B = map(real_rep, (_C, _A, _B))
 
     η = ifelse(ArrayInterface.is_lazy_conjugate(_A), StaticInt(-1), StaticInt(1))
     θ = ifelse(ArrayInterface.is_lazy_conjugate(_B), StaticInt(-1), StaticInt(1))
     (+ᶻ, -ᶻ) = ifelse(ArrayInterface.is_lazy_conjugate(_C), (-, +), (+, -))
     ηθ = η*θ
 
-    @avxt for n ∈ indices((C, B), 3), m ∈ indices((C, A), 2)
+    @tturbo for n ∈ indices((C, B), 3), m ∈ indices((C, A), 2)
         Cmn_re = zero(T)
         Cmn_im = zero(T)
         for k ∈ indices((A, B), (3, 2))
@@ -23,14 +23,14 @@ real_rep(a::AbstractArray{Complex{T}, N}) where {T, N} = reinterpret(reshape, T,
     _C
 end
 
-@inline function _matmul!(_C::AbstractMatrix{Complex{T}}, A::AbstractMatrix{U}, _B::AbstractMatrix{Complex{V}},
+@inline function _matmul!(_C::AbstractVecOrMat{Complex{T}}, A::AbstractMatrix{U}, _B::AbstractVecOrMat{Complex{V}},
                          α=One(), β=Zero(), nthread::Nothing=nothing, MKN=nothing, contig_axis=nothing) where {T,U,V}
-    C, B = real_rep.((_C, _B))
+    C, B = map(real_rep, (_C, _B))
     
     θ = ifelse(ArrayInterface.is_lazy_conjugate(_B), StaticInt(-1), StaticInt(1))
     (+ᶻ, -ᶻ) = ifelse(ArrayInterface.is_lazy_conjugate(_C), (-, +), (+, -))
 
-    @avxt for n ∈ indices((C, B), 3), m ∈ indices((C, A), (2, 1))
+    @tturbo for n ∈ indices((C, B), 3), m ∈ indices((C, A), (2, 1))
         Cmn_re = zero(T)
         Cmn_im = zero(T)
         for k ∈ indices((A, B), (2, 2))
@@ -43,14 +43,14 @@ end
     _C
 end
 
-@inline function _matmul!(_C::AbstractMatrix{Complex{T}}, _A::AbstractMatrix{Complex{U}}, B::AbstractMatrix{V},
+@inline function _matmul!(_C::AbstractVecOrMat{Complex{T}}, _A::AbstractMatrix{Complex{U}}, B::AbstractVecOrMat{V},
                          α=One(), β=Zero(), nthread::Nothing=nothing, MKN=nothing, contig_axis=nothing) where {T,U,V}
-    C, A = real_rep.((_C, _A))
+    C, A = map(real_rep, (_C, _A))
 
     η = ifelse(ArrayInterface.is_lazy_conjugate(_A), StaticInt(-1), StaticInt(1))
     (+ᶻ, -ᶻ) = ifelse(ArrayInterface.is_lazy_conjugate(_C), (-, +), (+, -))
     
-    @avxt for n ∈ indices((C, B), (3, 2)), m ∈ indices((C, A), 2)
+    @tturbo for n ∈ indices((C, B), (3, 2)), m ∈ indices((C, A), 2)
         Cmn_re = zero(T)
         Cmn_im = zero(T)
         for k ∈ indices((A, B), (3, 1))
@@ -67,15 +67,15 @@ end
 
 
 
-@inline function _matmul_serial!(_C::AbstractMatrix{Complex{T}}, _A::AbstractMatrix{Complex{U}}, _B::AbstractMatrix{Complex{V}},
+@inline function _matmul_serial!(_C::AbstractVecOrMat{Complex{T}}, _A::AbstractMatrix{Complex{U}}, _B::AbstractVecOrMat{Complex{V}},
                          α=One(), β=Zero(), MKN=nothing, contig_axis=nothing) where {T,U,V}
-    C, A, B = real_rep.((_C, _A, _B))
+    C, A, B = map(real_rep, (_C, _A, _B))
 
     η = ifelse(ArrayInterface.is_lazy_conjugate(_A), StaticInt(-1), StaticInt(1))
     θ = ifelse(ArrayInterface.is_lazy_conjugate(_B), StaticInt(-1), StaticInt(1))
     (+ᶻ, -ᶻ) = ifelse(ArrayInterface.is_lazy_conjugate(_C), (-, +), (+, -))
     ηθ = η*θ
-    @avx for n ∈ indices((C, B), 3), m ∈ indices((C, A), 2)
+    @turbo for n ∈ indices((C, B), 3), m ∈ indices((C, A), 2)
         Cmn_re = zero(T)
         Cmn_im = zero(T)
         for k ∈ indices((A, B), (3, 2))
@@ -88,14 +88,14 @@ end
     _C
 end
 
-@inline function _matmul_serial!(_C::AbstractMatrix{Complex{T}}, A::AbstractMatrix{U}, _B::AbstractMatrix{Complex{V}},
+@inline function _matmul_serial!(_C::AbstractVecOrMat{Complex{T}}, A::AbstractMatrix{U}, _B::AbstractVecOrMat{Complex{V}},
                          α=One(), β=Zero(), MKN=nothing, contig_axis=nothing) where {T,U,V}
-    C, B = real_rep.((_C, _B))
+    C, B = map(real_rep, (_C, _B))
 
     θ = ifelse(ArrayInterface.is_lazy_conjugate(_B), StaticInt(-1), StaticInt(1))
     (+ᶻ, -ᶻ) = ifelse(ArrayInterface.is_lazy_conjugate(_C), (-, +), (+, -))
     
-    @avx for n ∈ indices((C, B), 3), m ∈ indices((C, A), (2, 1))
+    @turbo for n ∈ indices((C, B), 3), m ∈ indices((C, A), (2, 1))
         Cmn_re = zero(T)
         Cmn_im = zero(T)
         for k ∈ indices((A, B), (2, 2))
@@ -108,14 +108,14 @@ end
     _C
 end
 
-@inline function _matmul_serial!(_C::AbstractMatrix{Complex{T}}, _A::AbstractMatrix{Complex{U}}, B::AbstractMatrix{V},
+@inline function _matmul_serial!(_C::AbstractVecOrMat{Complex{T}}, _A::AbstractMatrix{Complex{U}}, B::AbstractVecOrMat{V},
                          α=One(), β=Zero(), MKN=nothing, contig_axis=nothing) where {T,U,V}
-    C, A = real_rep.((_C, _A))
+    C, A = map(real_rep, (_C, _A))
 
     η = ifelse(ArrayInterface.is_lazy_conjugate(_A), StaticInt(-1), StaticInt(1))
     (+ᶻ, -ᶻ) = ifelse(ArrayInterface.is_lazy_conjugate(_C), (-, +), (+, -))
     
-    @avx for n ∈ indices((C, B), (3, 2)), m ∈ indices((C, A), 2)
+    @turbo for n ∈ indices((C, B), (3, 2)), m ∈ indices((C, A), 2)
         Cmn_re = zero(T)
         Cmn_im = zero(T)
         for k ∈ indices((A, B), (3, 1))
