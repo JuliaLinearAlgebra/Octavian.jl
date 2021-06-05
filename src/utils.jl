@@ -16,8 +16,8 @@ given a mix of static and dynamic sizes.
     (_select(MA, MC), _select(KA, KB), _select(NB, NC))
 end
 
-function unsafe_copyto_avx!(pB, pA, M, N)
-    LoopVectorization.@avx for n ∈ CloseOpen(N), m ∈ CloseOpen(M)
+function unsafe_copyto_turbo!(pB, pA, M, N)
+    LoopVectorization.@turbo for n ∈ CloseOpen(N), m ∈ CloseOpen(M)
         pB[m,n] = pA[m,n]
     end
 end

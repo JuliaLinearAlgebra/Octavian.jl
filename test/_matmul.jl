@@ -3,27 +3,33 @@
 # `n_values`
 # `k_values`
 # `m_values`
-for T ∈ (ComplexF32, ComplexF64, Complex{Int}, Complex{Int32})
+for T ∈ (ComplexF32, ComplexF64, Complex{Int64}, Complex{Int32})
     @time @testset "Matrix Multiply $T $(testset_name_suffix)" begin
         for n ∈ n_values
             for k ∈ k_values
                 for m ∈ m_values
-                    A = rand(T, m, k)
-                    B = rand(T, k, n)
+                    A = rand(T, m, k);
+                    B = rand(T, k, n);
+                    b = rand(T, k);
 
-                    Are = real.(A)
-                    Bre = real.(B)
-                    
+                    Are = real.(A);
+                    Bre = real.(B);
+                    bre = real.(b);
+
                     A′ = permutedims(A)'
                     B′ = permutedims(B)'
                     AB = A * B;
-                    A′B = A′*B
-                    AB′ = A*B′
-                    A′B′= A′*B′
+                    A′B = A′*B;
+                    AB′ = A*B′;
+                    A′B′= A′*B′;
+                    Ab = A*b;
+                    A′b = A′*b;
 
-                    AreB = Are*B
-                    ABre = A*Bre
-                    
+                    AreB = Are*B;
+                    ABre = A*Bre;
+                    Areb = Are*b;
+                    Abre = A*bre;
+
                     @info "" T n k m
                     @test @time(Octavian.matmul(A, B)) ≈ AB
                     @test @time(Octavian.matmul(A, Bre)) ≈ ABre
@@ -32,14 +38,23 @@ for T ∈ (ComplexF32, ComplexF64, Complex{Int}, Complex{Int32})
                     @test @time(Octavian.matmul(A, B′)) ≈ AB′
                     @test @time(Octavian.matmul(A′, B′)) ≈ A′B′
 
-                    
+                    @test @time(Octavian.matmul(A, b)) ≈ Ab
+                    @test @time(Octavian.matmul(A, bre)) ≈ Abre
+                    @test @time(Octavian.matmul(Are, b)) ≈ Areb
+                    @test @time(Octavian.matmul(A′, b)) ≈ A′b
+
                     @test @time(Octavian.matmul_serial(A, B)) ≈ AB
                     @test @time(Octavian.matmul_serial(A, Bre)) ≈ ABre
                     @test @time(Octavian.matmul_serial(Are, B)) ≈ AreB
                     @test @time(Octavian.matmul_serial(A′, B)) ≈ A′B
                     @test @time(Octavian.matmul_serial(A, B′)) ≈ AB′
                     @test @time(Octavian.matmul_serial(A′, B′)) ≈ A′B′
-                    
+
+                    @test @time(Octavian.matmul_serial(A, b)) ≈ Ab
+                    @test @time(Octavian.matmul_serial(A, bre)) ≈ Abre
+                    @test @time(Octavian.matmul_serial(Are, b)) ≈ Areb
+                    @test @time(Octavian.matmul_serial(A′, b)) ≈ A′b
+
                     C = Matrix{T}(undef, n, m)'
                     @test @time(Octavian.matmul!(C, A, B)) ≈ AB
 
@@ -61,9 +76,11 @@ end
             for m ∈ m_values
                 A = rand(T, m, k)
                 B = rand(T, k, n)
+                b = rand(T, k)
                 A′ = permutedims(A)'
                 B′ = permutedims(B)'
                 AB = A * B;
+                Ab = A * b;
                 @info "" T n k m
                 @test @time(Octavian.matmul(A, B)) ≈ AB
                 @test @time(Octavian.matmul(A′, B)) ≈ AB
@@ -73,6 +90,10 @@ end
                 @test @time(Octavian.matmul_serial(A′, B)) ≈ AB
                 @test @time(Octavian.matmul_serial(A, B′)) ≈ AB
                 @test @time(Octavian.matmul_serial(A′, B′)) ≈ AB
+                @test @time(Octavian.matmul(A, b)) ≈ Ab
+                @test @time(Octavian.matmul(A′, b)) ≈ Ab
+                @test @time(Octavian.matmul_serial(A, b)) ≈ Ab
+                @test @time(Octavian.matmul_serial(A′, b)) ≈ Ab
             end
         end
     end
