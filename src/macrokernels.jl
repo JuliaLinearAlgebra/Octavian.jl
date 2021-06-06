@@ -123,7 +123,7 @@ end
   mᵣ, nᵣ = matmul_params(Val(T))
   mᵣW = mᵣ * pick_vector_width(T)
   Apack = default_zerobased_stridedpointer(bufferptr, (One(), mᵣW, mᵣW * K)) # mᵣW x K x cld(M, mᵣW)
-  Apack, buffer
+  Apack
 end
 function packaloopmul!(
     C::AbstractStridedPointer{T},
