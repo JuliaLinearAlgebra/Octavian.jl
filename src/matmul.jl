@@ -445,8 +445,9 @@ function sync_mul!(
                 _B = default_zerobased_stridedpointer(bc, (One(), ksize))
                 unsafe_copyto_avx!(gesp(_B, (Zero(), pack_offset)), gesp(B, (Zero(), pack_offset)), ksize, pack_len)
                 # synchronize before starting the multiplication, to ensure `B` is packed
-                _mv = _atomic_add!(myp, one(UInt))
-                sync_iters += one(UInt)
+                _atomic_store!(myp, (sync_iters += one(UInt)))
+                # _mv = _atomic_add!(myp, one(UInt))
+                
                 let atomp = atomicp
                     for _ ∈ CloseOpen(total_ids)
                         atomp += cache_linesize()
@@ -469,10 +470,11 @@ function sync_mul!(
                         C = gesp(C, (msize, Zero()))
                     end
                 end
+                _atomic_store!(mys, sync_iters)
                 A = gesp(A, (Zero(), ksize))
                 B = gesp(B, (ksize, Zero()))
                 # synchronize on completion so we wait until every thread is done with `Bpacked` before beginning to overwrite it
-                _mv = _atomic_add!(mys, one(UInt))
+                # _mv = _atomic_add!(mys, one(UInt))
                 let atoms = atomics
                     for _ ∈ CloseOpen(total_ids)
                         atoms += cache_linesize()
