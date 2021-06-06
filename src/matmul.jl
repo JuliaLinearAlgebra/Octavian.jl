@@ -388,11 +388,11 @@ function matmul_pack_A_and_B!(
     mᵣW = mᵣ * W
     # atomicsync = Ref{NTuple{16,UInt}}()
     Mbsize, Mrem, Mremfinal, _to_spawn = split_m(M, tospawn, W) # M is guaranteed to be > W because of `W ≥ M` condition for `jmultsplitn!`...
-    atomicsync = allocref(StaticInt{2}()*num_cores()*cache_linesize())
-    p = reinterpret(Ptr{UInt}, Base.unsafe_convert(Ptr{UInt8}, atomicsync))
+    atomicsync = allocref((StaticInt{1}()+num_cores())*cache_linesize())
+    p = align(Base.unsafe_convert(Ptr{UInt32}, atomicsync))
     GC.@preserve atomicsync begin
-        for i ∈ CloseOpen(2_to_spawn)
-            _atomic_store!(p + i*cache_linesize(), zero(UInt))
+        for i ∈ CloseOpen(_to_spawn)
+            _atomic_store!(reinterpret(Ptr{UInt64}, p) + i*cache_linesize(), 0x0000000000000000)
         end
         Mblock_Mrem, Mblock_ = promote(Mbsize + W, Mbsize)
         u_to_spawn = _to_spawn % UInt
@@ -414,19 +414,15 @@ function matmul_pack_A_and_B!(
 end
 
 function sync_mul!(
-    C::AbstractStridedPointer{T}, A::AbstractStridedPointer, B::AbstractStridedPointer, α, β, M, K, N, atomicp::Ptr{UInt}, bc::Ptr, id::UInt, total_ids::UInt,
+    C::AbstractStridedPointer{T}, A::AbstractStridedPointer, B::AbstractStridedPointer, α, β, M, K, N, atomicp::Ptr{UInt32}, bc::Ptr, id::UInt, total_ids::UInt,
     ::StaticFloat64{W₁}, ::StaticFloat64{W₂}, ::StaticFloat64{R₁}, ::StaticFloat64{R₂}
 ) where {T, W₁, W₂, R₁, R₂}
 
     (Mblock, Mblock_Mrem, Mremfinal, Mrem, Miter), (Kblock, Kblock_Krem, Krem, Kiter), (Nblock, Nblock_Nrem, Nrem, Niter) =
         solve_block_sizes(Val(T), M, K, N, StaticFloat64{W₁}(), StaticFloat64{W₂}(), StaticFloat64{R₁}(), StaticFloat64{R₂}(), One())
 
-    # atomics = atomicp + 8sizeof(UInt)
     sync_iters = zero(UInt)
-    myp = atomicp +   id *cache_linesize()
-    atomicp -= cache_linesize()
-    atomics = atomicp + total_ids*cache_linesize()
-    mys = myp + total_ids*(cache_linesize() % UInt)
+    myp = atomicp + id *cache_linesize()
     Npackb_r_div, Npackb_r_rem = divrem_fast(Nblock_Nrem, total_ids)
     Npackb_r_block_rem, Npackb_r_block_ = promote(Npackb_r_div + One(), Npackb_r_div)
 
@@ -452,16 +448,15 @@ function sync_mul!(
                 _B = default_zerobased_stridedpointer(bc, (One(), ksize))
                 unsafe_copyto_turbo!(gesp(_B, (Zero(), pack_offset)), gesp(B, (Zero(), pack_offset)), ksize, pack_len)
                 # synchronize before starting the multiplication, to ensure `B` is packed
-                _atomic_store!(myp, (sync_iters += one(UInt)))
-                # _mv = _atomic_add!(myp, one(UInt))
-                
+                _mv = _atomic_add!(myp 0x00000001)
+                sync_iters += one(UInt)
                 let atomp = atomicp
                     for _ ∈ CloseOpen(total_ids)
-                        atomp += cache_linesize()
                         atomp == myp && continue
-                        while _atomic_load(atomp) != sync_iters
+                        while _atomic_load(atomp) ≠ sync_iters
                             pause()
                         end
+                        atomp += cache_linesize()
                     end
                 end
                 # multiply
@@ -477,18 +472,17 @@ function sync_mul!(
                         C = gesp(C, (msize, Zero()))
                     end
                 end
-                _atomic_store!(mys, sync_iters)
+                _mv = _atomic_add!(myp + 4, 0x00000001)
                 A = gesp(A, (Zero(), ksize))
                 B = gesp(B, (ksize, Zero()))
                 # synchronize on completion so we wait until every thread is done with `Bpacked` before beginning to overwrite it
-                # _mv = _atomic_add!(mys, one(UInt))
-                let atoms = atomics
+                let atomp = atomicp
                     for _ ∈ CloseOpen(total_ids)
-                        atoms += cache_linesize()
-                        atoms == mys && continue
-                        while _atomic_load(atoms) != sync_iters
+                        atomp == myp && continue
+                        while _atomic_load(atomp+4) ≠ sync_iters
                             pause()
                         end
+                        atomp += cache_linesize()
                     end
                 end
             end
