@@ -116,15 +116,14 @@ end
 end
 @inline function alloc_a_pack(K, ::Val{T}) where {T}
   buffer = first_cache_buffer(Val(T))
+  alloc_a_pack(K, buffer), buffer
+end
+@inline alloc_a_pack(K, buffer::MemoryBuffer) = alloc_a_pack(K, align(pointer(buffer)))
+@inline function alloc_a_pack(K, bufferptr::Ptr{T}) where {T}
   mᵣ, nᵣ = matmul_params(Val(T))
   mᵣW = mᵣ * pick_vector_width(T)
-  bufferptr = if Sys.WORD_SIZE == 32
-    buffer
-  else
-    align(pointer(buffer))
-  end
   Apack = default_zerobased_stridedpointer(bufferptr, (One(), mᵣW, mᵣW * K)) # mᵣW x K x cld(M, mᵣW)
-  Apack, buffer
+  Apack
 end
 function packaloopmul!(
     C::AbstractStridedPointer{T},

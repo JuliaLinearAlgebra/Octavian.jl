@@ -25,8 +25,8 @@ end
 end
 call_loopmul!(C, A, B, α, β, M, K, N, ::Val{P}) where {P} = _call_loopmul!(C, A, B, α, β, M, K, N, Val{P}())
 
-struct SyncMulFunc{TC,TA,TB,Α,Β,Md,Kd,Nd,AP,BCP,ID,TT,W₁,W₂,R₁,R₂} <: Function end
-function (::SyncMulFunc{TC,TA,TB,Α,Β,Md,Kd,Nd,AP,BCP,ID,TT,W₁,W₂,R₁,R₂})(p::Ptr{UInt}) where {TC,TA,TB,Α,Β,Md,Kd,Nd,AP,BCP,ID,TT,W₁,W₂,R₁,R₂}
+struct SyncMulFunc{TC,TA,TB,Α,Β,Md,Kd,Nd,BCP,ID,TT,W₁,W₂,R₁,R₂} <: Function end
+function (::SyncMulFunc{TC,TA,TB,Α,Β,Md,Kd,Nd,BCP,ID,TT,W₁,W₂,R₁,R₂})(p::Ptr{UInt}) where {TC,TA,TB,Α,Β,Md,Kd,Nd,BCP,ID,TT,W₁,W₂,R₁,R₂}
     offset, C = load(p, TC, 2*sizeof(UInt))
     offset, A = load(p, TA, offset)
     offset, B = load(p, TB, offset)
@@ -35,7 +35,7 @@ function (::SyncMulFunc{TC,TA,TB,Α,Β,Md,Kd,Nd,AP,BCP,ID,TT,W₁,W₂,R₁,R₂
     offset, M = load(p, Md, offset)
     offset, K = load(p, Kd, offset)
     offset, N = load(p, Nd, offset)
-    offset, atomicp = load(p, AP, offset)
+    offset, atomicp = load(p, Ptr{UInt32}, offset)
     offset, bcachep = load(p, BCP, offset)
     offset, id = load(p, ID, offset)
     offset, total_ids = load(p, TT, offset)
@@ -66,9 +66,9 @@ end
 
 @inline function setup_syncmul!(
     p::Ptr{UInt}, C::TC, A::TA, B::TB, α::Α, β::Β, M::Md, K::Kd, N::Nd,
-    ap::AP,bcp::BCP,id::ID,tt::TT,::StaticFloat64{W₁},::StaticFloat64{W₂},::StaticFloat64{R₁},::StaticFloat64{R₂}
-) where {TC,TA,TB,Α,Β,Md,Kd,Nd,AP,BCP,ID,TT,W₁,W₂,R₁,R₂}
-    offset = store!(p, cfuncpointer(SyncMulFunc{TC,TA,TB,Α,Β,Md,Kd,Nd,AP,BCP,ID,TT,W₁,W₂,R₁,R₂}()), sizeof(UInt))
+    ap::Ptr{UInt32},bcp::BCP,id::ID,tt::TT,::StaticFloat64{W₁},::StaticFloat64{W₂},::StaticFloat64{R₁},::StaticFloat64{R₂}
+) where {TC,TA,TB,Α,Β,Md,Kd,Nd,BCP,ID,TT,W₁,W₂,R₁,R₂}
+    offset = store!(p, cfuncpointer(SyncMulFunc{TC,TA,TB,Α,Β,Md,Kd,Nd,BCP,ID,TT,W₁,W₂,R₁,R₂}()), sizeof(UInt))
     offset = store!(p, C, offset)
     offset = store!(p, A, offset)
     offset = store!(p, B, offset)
