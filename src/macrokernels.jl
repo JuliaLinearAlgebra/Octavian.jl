@@ -27,7 +27,7 @@ macro kernel(pack::Bool, ex::Expr)
   else
     Ainit = areconstruct = Expr[]
   end
-  lvkern = esc(:(@avx inline=true $ex))
+  lvkern = esc(:(@turbo inline=true $ex))
 
   loopnest = quote
     let ãₚ = ãₚ, c = c, $(esc(:B)) = VectorizationBase.reconstruct_ptr(B, b), m = m
@@ -81,7 +81,7 @@ macro kernel(pack::Bool, ex::Expr)
   Expr(:block, preheader, loopnest)
 end
 @inline function loopmul!(C, A, B, α, β, M, K, N)
-    @avx for n ∈ CloseOpen(N), m ∈ CloseOpen(M)
+    @turbo for n ∈ CloseOpen(N), m ∈ CloseOpen(M)
         Cₘₙ = zero(eltype(C))
         for k ∈ CloseOpen(K)
             Cₘₙ += A[m,k] * B[k,n]
@@ -141,7 +141,7 @@ function packaloopmul!(
 end
 
 @inline function inlineloopmul!(C, A, B, α, β, M, K, N)
-    @avx inline=true for m ∈ CloseOpen(M), n ∈ CloseOpen(N)
+    @turbo inline=true for m ∈ CloseOpen(M), n ∈ CloseOpen(N)
         Cₘₙ = zero(eltype(C))
         for k ∈ CloseOpen(K)
             Cₘₙ += A[m,k] * B[k,n]

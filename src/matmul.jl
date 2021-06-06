@@ -50,7 +50,7 @@ function matmul_st_pack_A_and_B!(
             for k ∈ CloseOpen(Kiter)
                 ksize = ifelse(k < Krem, Kblock_Krem, Kblock)
                 _B = default_zerobased_stridedpointer(L3ptr, (One(),ksize))
-                unsafe_copyto_avx!(_B, B, ksize, nsize)
+                unsafe_copyto_turbo!(_B, B, ksize, nsize)
                 let A = A, C = C, B = _B
                     for m in CloseOpen(Miter)
                         msize = ifelse((m+1) == Miter, Mremfinal, ifelse(m < Mrem, Mblock_Mrem, Mblock))
@@ -91,14 +91,21 @@ end
 end
 
 
-@inline function alloc_matmul_product(A::AbstractArray{TA}, B::AbstractArray{TB}) where {TA,TB}
+@inline function alloc_matmul_product(A::AbstractArray{TA}, B::AbstractMatrix{TB}) where {TA,TB}
     # TODO: if `M` and `N` are statically sized, shouldn't return a `Matrix`.
     M, KA = size(A)
     KB, N = size(B)
     @assert KA == KB "Size mismatch."
     Matrix{promote_type(TA,TB)}(undef, M, N), (M, KA, N)
 end
-@inline function matmul_serial(A::AbstractMatrix, B::AbstractMatrix)
+@inline function alloc_matmul_product(A::AbstractArray{TA}, B::AbstractVector{TB}) where {TA,TB}
+  # TODO: if `M` and `N` are statically sized, shouldn't return a `Matrix`.
+  M, KA = size(A)
+  KB = length(B)
+  @assert KA == KB "Size mismatch."
+  Vector{promote_type(TA,TB)}(undef, M), (M, KA, One())
+end
+@inline function matmul_serial(A::AbstractMatrix, B::AbstractVecOrMat)
     C, (M,K,N) = alloc_matmul_product(A, B)
     _matmul_serial!(C, A, B, One(), Zero(), (M,K,N))
     return C
@@ -116,20 +123,20 @@ function maybeinline(::StaticInt{M}, ::StaticInt{N}, ::Type{T}, ::Val{false}) wh
 end
 
 
-@inline function matmul_serial!(C::AbstractMatrix{T}, A::AbstractMatrix, B::AbstractMatrix) where {T}
+@inline function matmul_serial!(C::AbstractVecOrMat, A::AbstractMatrix, B::AbstractVecOrMat)
     matmul_serial!(C, A, B, One(), Zero(), nothing, ArrayInterface.contiguous_axis(C))
 end
-@inline function matmul_serial!(C::AbstractMatrix, A::AbstractMatrix, B::AbstractMatrix, α)
+@inline function matmul_serial!(C::AbstractVecOrMat, A::AbstractMatrix, B::AbstractVecOrMat, α)
     matmul_serial!(C, A, B, α, Zero(), nothing, ArrayInterface.contiguous_axis(C))
 end
-@inline function matmul_serial!(C::AbstractMatrix, A::AbstractMatrix, B::AbstractMatrix, α, β)
+@inline function matmul_serial!(C::AbstractVecOrMat, A::AbstractMatrix, B::AbstractVecOrMat, α, β)
     matmul_serial!(C, A, B, α, β, nothing, ArrayInterface.contiguous_axis(C))
 end
-@inline function matmul_serial!(C::AbstractMatrix, A::AbstractMatrix, B::AbstractMatrix, α, β, MKN, ::StaticInt{2})
+@inline function matmul_serial!(C::AbstractVecOrMat, A::AbstractMatrix, B::AbstractVecOrMat, α, β, MKN, ::StaticInt{2})
     _matmul_serial!(C', B', A', α, β, nothing)
     return C
 end
-@inline function matmul_serial!(C::AbstractMatrix, A::AbstractMatrix, B::AbstractMatrix, α, β, MKN, ::StaticInt)
+@inline function matmul_serial!(C::AbstractVecOrMat, A::AbstractMatrix, B::AbstractVecOrMat, α, β, MKN, ::StaticInt)
     _matmul_serial!(C, A, B, α, β, nothing)
     return C
 end
@@ -149,7 +156,7 @@ Otherwise, based on the array's size, whether they are transposed, and whether t
 """
 @inline function _matmul_serial!(
     C::AbstractMatrix{T}, A::AbstractMatrix, B::AbstractMatrix, α, β, MKN
-) where {T}
+) where {T<:Real}
     M, K, N = MKN === nothing ? matmul_sizes(C, A, B) : MKN
     if M * N == 0
         return
@@ -175,13 +182,13 @@ Otherwise, based on the array's size, whether they are transposed, and whether t
 end # function
 
 function matmul_only_β!(C::AbstractMatrix{T}, β::StaticInt{0}) where T
-    @avx for i=1:length(C)
+    @turbo for i=1:length(C)
         C[i] = zero(T)
     end
 end
 
 function matmul_only_β!(C::AbstractMatrix{T}, β) where T
-    @avx for i=1:length(C)
+    @turbo for i=1:length(C)
         C[i] = β * C[i]
     end
 end
@@ -204,7 +211,7 @@ end
 
 Multiply matrices `A` and `B`.
 """
-@inline function matmul(A::AbstractMatrix, B::AbstractMatrix)
+@inline function matmul(A::AbstractMatrix, B::AbstractVecOrMat)
     C, (M,K,N) = alloc_matmul_product(A, B)
     _matmul!(C, A, B, One(), Zero(), nothing, (M,K,N))
     return C
@@ -213,26 +220,26 @@ end
 """
     matmul!(C, A, B[, α, β, max_threads])
 
-Calculates `C = α * A * B + β * C` in place, overwriting the contents of `A`.
+Calculates `C = α * A * B + β * C` in place, overwriting the contents of `C`.
 It may use up to `max_threads` threads. It will not use threads when nested in other threaded code.
 """
-@inline function matmul!(C::AbstractMatrix{T}, A::AbstractMatrix, B::AbstractMatrix) where {T}
+@inline function matmul!(C::AbstractVecOrMat, A::AbstractMatrix, B::AbstractVecOrMat)
     matmul!(C, A, B, One(), Zero(), nothing, nothing, ArrayInterface.contiguous_axis(C))
 end
-@inline function matmul!(C::AbstractMatrix, A::AbstractMatrix, B::AbstractMatrix, α)
+@inline function matmul!(C::AbstractVecOrMat, A::AbstractMatrix, B::AbstractVecOrMat, α)
     matmul!(C, A, B, α, Zero(), nothing, nothing, ArrayInterface.contiguous_axis(C))
 end
-@inline function matmul!(C::AbstractMatrix, A::AbstractMatrix, B::AbstractMatrix, α, β)
+@inline function matmul!(C::AbstractVecOrMat, A::AbstractMatrix, B::AbstractVecOrMat, α, β)
     matmul!(C, A, B, α, β, nothing, nothing, ArrayInterface.contiguous_axis(C))
 end
-@inline function matmul!(C::AbstractMatrix, A::AbstractMatrix, B::AbstractMatrix, α, β, nthread)
+@inline function matmul!(C::AbstractVecOrMat, A::AbstractMatrix, B::AbstractVecOrMat, α, β, nthread)
     matmul!(C, A, B, α, β, nthread, nothing, ArrayInterface.contiguous_axis(C))
 end
-@inline function matmul!(C::AbstractMatrix, A::AbstractMatrix, B::AbstractMatrix, α, β, nthread, MKN, ::StaticInt{2})
+@inline function matmul!(C::AbstractVecOrMat, A::AbstractMatrix, B::AbstractVecOrMat, α, β, nthread, MKN, ::StaticInt{2})
     _matmul!(C', B', A', α, β, nthread, MKN)
     return C
 end
-@inline function matmul!(C::AbstractMatrix, A::AbstractMatrix, B::AbstractMatrix, α, β, nthread, MKN, ::StaticInt)
+@inline function matmul!(C::AbstractVecOrMat, A::AbstractMatrix, B::AbstractVecOrMat, α, β, nthread, MKN, ::StaticInt)
     _matmul!(C, A, B, α, β, nthread, MKN)
     return C
 end
@@ -243,7 +250,7 @@ end
 end
 
 # passing MKN directly would let osmeone skip the size check.
-@inline function _matmul!(C::AbstractMatrix{T}, A, B, α, β, nthread, MKN) where {T}#::Union{Nothing,Tuple{Vararg{Integer,3}}}) where {T}
+@inline function _matmul!(C::AbstractMatrix{T}, A, B, α, β, nthread, MKN) where {T<:Real}
     M, K, N = MKN === nothing ? matmul_sizes(C, A, B) : MKN
     if M * N == 0
         return
@@ -443,7 +450,7 @@ function sync_mul!(
             for k ∈ CloseOpen(Kiter)
                 ksize = ifelse(k < Krem, Kblock_Krem, Kblock)
                 _B = default_zerobased_stridedpointer(bc, (One(), ksize))
-                unsafe_copyto_avx!(gesp(_B, (Zero(), pack_offset)), gesp(B, (Zero(), pack_offset)), ksize, pack_len)
+                unsafe_copyto_turbo!(gesp(_B, (Zero(), pack_offset)), gesp(B, (Zero(), pack_offset)), ksize, pack_len)
                 # synchronize before starting the multiplication, to ensure `B` is packed
                 _atomic_store!(myp, (sync_iters += one(UInt)))
                 # _mv = _atomic_add!(myp, one(UInt))
@@ -491,3 +498,26 @@ function sync_mul!(
     end
     nothing
 end
+
+function _matmul!(y::AbstractVector{T}, A::AbstractMatrix, x::AbstractVector, α, β, MKN, contig_axis) where {T<:Real}
+  @tturbo for m ∈ indices((A,y),1)
+    yₘ = zero(T)
+    for n ∈ indices((A,x),(2,1))
+      yₘ += A[m,n]*x[n]
+    end
+    y[m] = α * yₘ + β * y[m]
+  end
+  return y
+end
+function _matmul_serial!(y::AbstractVector{T}, A::AbstractMatrix, x::AbstractVector, α, β, MKN) where {T<:Real}
+  @turbo for m ∈ indices((A,y),1)
+    yₘ = zero(T)
+    for n ∈ indices((A,x),(2,1))
+      yₘ += A[m,n]*x[n]
+    end
+    y[m] = α * yₘ + β * y[m]
+  end
+  return y
+end
+
+
