@@ -97,7 +97,7 @@ end
   KB, N = size(B)
   @assert KA == KB "Size mismatch."
   if M === StaticInt(1)
-    Vector{promote_type(TA,TB)}(undef, N)', (M, KA, N)
+    transpose(Vector{promote_type(TA,TB)}(undef, N)), (M, KA, N)
   else
     Matrix{promote_type(TA,TB)}(undef, M, N), (M, KA, N)
   end
@@ -138,11 +138,11 @@ end
     matmul_serial!(C, A, B, α, β, nothing, ArrayInterface.contiguous_axis(C))
 end
 @inline function matmul_serial!(C::AbstractVecOrMat, A::AbstractMatrix, B::AbstractVecOrMat, α, β, ::Nothing, ::StaticInt{2})
-  _matmul_serial!(C', B', A', α, β, nothing)
+  _matmul_serial!(transpose(C), transpose(B), transpose(A), α, β, nothing)
   return C
 end
 @inline function matmul_serial!(C::AbstractVecOrMat, A::AbstractMatrix, B::AbstractVecOrMat, α, β, (M,K,N)::Tuple{Vararg{Integer,3}}, ::StaticInt{2})
-  _matmul_serial!(C', B', A', α, β, (N,K,M))
+  _matmul_serial!(transpose(C), transpose(B), transpose(A), α, β, (N,K,M))
   return C
 end
 @inline function matmul_serial!(C::AbstractVecOrMat, A::AbstractMatrix, B::AbstractVecOrMat, α, β, MKN, ::StaticInt)
@@ -245,11 +245,11 @@ end
     matmul!(C, A, B, α, β, nthread, nothing, ArrayInterface.contiguous_axis(C))
 end
 @inline function matmul!(C::AbstractVecOrMat, A::AbstractMatrix, B::AbstractVecOrMat, α, β, nthread, ::Nothing, ::StaticInt{2})
-  _matmul!(C', B', A', α, β, nthread, nothing)
+  _matmul!(transpose(C), transpose(B), transpose(A), α, β, nthread, nothing)
   return C
 end
 @inline function matmul!(C::AbstractVecOrMat, A::AbstractMatrix, B::AbstractVecOrMat, α, β, nthread, (M,K,N)::Tuple{Vararg{Integer,3}}, ::StaticInt{2})
-  _matmul!(C', B', A', α, β, nthread, (N,K,M))
+  _matmul!(transpose(C), transpose(B), transpose(A), α, β, nthread, (N,K,M))
   return C
 end
 @inline function matmul!(C::AbstractVecOrMat, A::AbstractMatrix, B::AbstractVecOrMat, α, β, nthread, MKN, ::StaticInt)
