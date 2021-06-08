@@ -92,11 +92,15 @@ end
 
 
 @inline function alloc_matmul_product(A::AbstractArray{TA}, B::AbstractMatrix{TB}) where {TA,TB}
-    # TODO: if `M` and `N` are statically sized, shouldn't return a `Matrix`.
-    M, KA = size(A)
-    KB, N = size(B)
-    @assert KA == KB "Size mismatch."
+  # TODO: if `M` and `N` are statically sized, shouldn't return a `Matrix`.
+  M, KA = size(A)
+  KB, N = size(B)
+  @assert KA == KB "Size mismatch."
+  if M === StaticInt(1)
+    transpose(Vector{promote_type(TA,TB)}(undef, N)), (M, KA, N)
+  else
     Matrix{promote_type(TA,TB)}(undef, M, N), (M, KA, N)
+  end
 end
 @inline function alloc_matmul_product(A::AbstractArray{TA}, B::AbstractVector{TB}) where {TA,TB}
   # TODO: if `M` and `N` are statically sized, shouldn't return a `Matrix`.
@@ -105,10 +109,11 @@ end
   @assert KA == KB "Size mismatch."
   Vector{promote_type(TA,TB)}(undef, M), (M, KA, One())
 end
+
 @inline function matmul_serial(A::AbstractMatrix, B::AbstractVecOrMat)
-    C, (M,K,N) = alloc_matmul_product(A, B)
-    _matmul_serial!(C, A, B, One(), Zero(), (M,K,N))
-    return C
+  C, (M,K,N) = alloc_matmul_product(A, B)
+  matmul_serial!(C, A, B, One(), Zero(), (M,K,N), ArrayInterface.contiguous_axis(C))
+  return C
 end
 
 
@@ -132,12 +137,16 @@ end
 @inline function matmul_serial!(C::AbstractVecOrMat, A::AbstractMatrix, B::AbstractVecOrMat, α, β)
     matmul_serial!(C, A, B, α, β, nothing, ArrayInterface.contiguous_axis(C))
 end
-@inline function matmul_serial!(C::AbstractVecOrMat, A::AbstractMatrix, B::AbstractVecOrMat, α, β, MKN, ::StaticInt{2})
-    _matmul_serial!(C', B', A', α, β, nothing)
-    return C
+@inline function matmul_serial!(C::AbstractVecOrMat, A::AbstractMatrix, B::AbstractVecOrMat, α, β, ::Nothing, ::StaticInt{2})
+  _matmul_serial!(transpose(C), transpose(B), transpose(A), α, β, nothing)
+  return C
+end
+@inline function matmul_serial!(C::AbstractVecOrMat, A::AbstractMatrix, B::AbstractVecOrMat, α, β, (M,K,N)::Tuple{Vararg{Integer,3}}, ::StaticInt{2})
+  _matmul_serial!(transpose(C), transpose(B), transpose(A), α, β, (N,K,M))
+  return C
 end
 @inline function matmul_serial!(C::AbstractVecOrMat, A::AbstractMatrix, B::AbstractVecOrMat, α, β, MKN, ::StaticInt)
-    _matmul_serial!(C, A, B, α, β, nothing)
+    _matmul_serial!(C, A, B, α, β, MKN)
     return C
 end
 
@@ -212,9 +221,9 @@ end
 Multiply matrices `A` and `B`.
 """
 @inline function matmul(A::AbstractMatrix, B::AbstractVecOrMat)
-    C, (M,K,N) = alloc_matmul_product(A, B)
-    _matmul!(C, A, B, One(), Zero(), nothing, (M,K,N))
-    return C
+  C, (M,K,N) = alloc_matmul_product(A, B)
+  matmul!(C, A, B, One(), Zero(), nothing, (M,K,N), ArrayInterface.contiguous_axis(C))
+  return C
 end
 
 """
@@ -235,13 +244,17 @@ end
 @inline function matmul!(C::AbstractVecOrMat, A::AbstractMatrix, B::AbstractVecOrMat, α, β, nthread)
     matmul!(C, A, B, α, β, nthread, nothing, ArrayInterface.contiguous_axis(C))
 end
-@inline function matmul!(C::AbstractVecOrMat, A::AbstractMatrix, B::AbstractVecOrMat, α, β, nthread, MKN, ::StaticInt{2})
-    _matmul!(C', B', A', α, β, nthread, MKN)
-    return C
+@inline function matmul!(C::AbstractVecOrMat, A::AbstractMatrix, B::AbstractVecOrMat, α, β, nthread, ::Nothing, ::StaticInt{2})
+  _matmul!(transpose(C), transpose(B), transpose(A), α, β, nthread, nothing)
+  return C
+end
+@inline function matmul!(C::AbstractVecOrMat, A::AbstractMatrix, B::AbstractVecOrMat, α, β, nthread, (M,K,N)::Tuple{Vararg{Integer,3}}, ::StaticInt{2})
+  _matmul!(transpose(C), transpose(B), transpose(A), α, β, nthread, (N,K,M))
+  return C
 end
 @inline function matmul!(C::AbstractVecOrMat, A::AbstractMatrix, B::AbstractVecOrMat, α, β, nthread, MKN, ::StaticInt)
-    _matmul!(C, A, B, α, β, nthread, MKN)
-    return C
+  _matmul!(C, A, B, α, β, nthread, MKN)
+  return C
 end
 
 @inline function dontpack(pA::AbstractStridedPointer{Ta}, M, K, ::StaticInt{mc}, ::StaticInt{kc}, ::Type{Tc}, nspawn) where {mc, kc, Tc, Ta}

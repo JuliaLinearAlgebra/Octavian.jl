@@ -39,9 +39,11 @@ for T ∈ (ComplexF32, ComplexF64, Complex{Int64}, Complex{Int32})
                     @test @time(Octavian.matmul(A′, B′)) ≈ A′B′
 
                     @test @time(Octavian.matmul(A, b)) ≈ Ab
+                    @test transpose(@time(Octavian.matmul(transpose(b), transpose(A)))) ≈ Ab
                     @test @time(Octavian.matmul(A, bre)) ≈ Abre
                     @test @time(Octavian.matmul(Are, b)) ≈ Areb
                     @test @time(Octavian.matmul(A′, b)) ≈ A′b
+                    @test transpose(@time(Octavian.matmul(transpose(b), transpose(A′)))) ≈ A′b
 
                     @test @time(Octavian.matmul_serial(A, B)) ≈ AB
                     @test @time(Octavian.matmul_serial(A, Bre)) ≈ ABre
@@ -51,9 +53,11 @@ for T ∈ (ComplexF32, ComplexF64, Complex{Int64}, Complex{Int32})
                     @test @time(Octavian.matmul_serial(A′, B′)) ≈ A′B′
 
                     @test @time(Octavian.matmul_serial(A, b)) ≈ Ab
+                    @test transpose(@time(Octavian.matmul_serial(transpose(b), transpose(A)))) ≈ Ab
                     @test @time(Octavian.matmul_serial(A, bre)) ≈ Abre
                     @test @time(Octavian.matmul_serial(Are, b)) ≈ Areb
                     @test @time(Octavian.matmul_serial(A′, b)) ≈ A′b
+                    @test transpose(@time(Octavian.matmul_serial(transpose(b), transpose(A′)))) ≈ A′b
 
                     C = Matrix{T}(undef, n, m)'
                     @test @time(Octavian.matmul!(C, A, B)) ≈ AB
@@ -92,8 +96,12 @@ end
                 @test @time(Octavian.matmul_serial(A′, B′)) ≈ AB
                 @test @time(Octavian.matmul(A, b)) ≈ Ab
                 @test @time(Octavian.matmul(A′, b)) ≈ Ab
+                @test @time(Octavian.matmul(b', A'))' ≈ Ab
+                @test @time(Octavian.matmul(b', A′'))' ≈ Ab
                 @test @time(Octavian.matmul_serial(A, b)) ≈ Ab
                 @test @time(Octavian.matmul_serial(A′, b)) ≈ Ab
+                @test @time(Octavian.matmul_serial(b', A'))' ≈ Ab
+                @test @time(Octavian.matmul_serial(b', A′'))' ≈ Ab
             end
         end
     end
