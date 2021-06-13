@@ -1,5 +1,5 @@
 
-matmul_params(::Val{T}) where {T <: Base.HWReal} = LoopVectorization.matmul_params()
+matmul_params(::Val{T}) where {T} = LoopVectorization.matmul_params()
 
 function block_sizes(::Val{T}, _α, _β, R₁, R₂) where {T}
     W = pick_vector_width(T)

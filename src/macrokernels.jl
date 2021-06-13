@@ -1,7 +1,7 @@
 
-@inline incrementp(A::AbstractStridedPointer{<:Base.HWReal,3}, a::Ptr) = VectorizationBase.increment_ptr(A, a, (Zero(), Zero(), One()))
-@inline increment2(B::AbstractStridedPointer{<:Base.HWReal,2}, b::Ptr, ::StaticInt{nᵣ}) where {nᵣ} = VectorizationBase.increment_ptr(B, b, (Zero(), StaticInt{nᵣ}()))
-@inline increment1(C::AbstractStridedPointer{<:Base.HWReal,2}, c::Ptr, ::StaticInt{mᵣW}) where {mᵣW} = VectorizationBase.increment_ptr(C, c, (StaticInt{mᵣW}(), Zero()))
+@inline incrementp(A::AbstractStridedPointer{T,3} where T, a::Ptr) = VectorizationBase.increment_ptr(A, a, (Zero(), Zero(), One()))
+@inline increment2(B::AbstractStridedPointer{T,2} where T, b::Ptr, ::StaticInt{nᵣ}) where {nᵣ} = VectorizationBase.increment_ptr(B, b, (Zero(), StaticInt{nᵣ}()))
+@inline increment1(C::AbstractStridedPointer{T,2} where T, c::Ptr, ::StaticInt{mᵣW}) where {mᵣW} = VectorizationBase.increment_ptr(C, c, (StaticInt{mᵣW}(), Zero()))
 macro kernel(pack::Bool, ex::Expr)
   ex.head === :for || throw(ArgumentError("Must be a matmul for loop."))
   mincrements = Expr[:(c = increment1(C, c, mᵣW)), :(ãₚ = incrementp(Ãₚ, ãₚ)), :(m = vsub_nsw(m, mᵣW))]
