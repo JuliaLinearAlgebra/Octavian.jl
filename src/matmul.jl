@@ -165,7 +165,7 @@ Otherwise, based on the array's size, whether they are transposed, and whether t
 """
 @inline function _matmul_serial!(
     C::AbstractMatrix{T}, A::AbstractMatrix, B::AbstractMatrix, α, β, MKN
-) where {T<:Real}
+) where {T}
     M, K, N = MKN === nothing ? matmul_sizes(C, A, B) : MKN
     if M * N == 0
         return
@@ -263,7 +263,7 @@ end
 end
 
 # passing MKN directly would let osmeone skip the size check.
-@inline function _matmul!(C::AbstractMatrix{T}, A, B, α, β, nthread, MKN) where {T<:Real}
+@inline function _matmul!(C::AbstractMatrix{T}, A, B, α, β, nthread, MKN) where {T}
     M, K, N = MKN === nothing ? matmul_sizes(C, A, B) : MKN
     if M * N == 0
         return
@@ -504,7 +504,7 @@ function sync_mul!(
   nothing
 end
 
-function _matmul!(y::AbstractVector{T}, A::AbstractMatrix, x::AbstractVector, α, β, MKN, contig_axis) where {T<:Real}
+function _matmul!(y::AbstractVector{T}, A::AbstractMatrix, x::AbstractVector, α, β, MKN, contig_axis) where {T}
   @tturbo for m ∈ indices((A,y),1)
     yₘ = zero(T)
     for n ∈ indices((A,x),(2,1))
@@ -514,7 +514,7 @@ function _matmul!(y::AbstractVector{T}, A::AbstractMatrix, x::AbstractVector, α
   end
   return y
 end
-function _matmul_serial!(y::AbstractVector{T}, A::AbstractMatrix, x::AbstractVector, α, β, MKN) where {T<:Real}
+function _matmul_serial!(y::AbstractVector{T}, A::AbstractMatrix, x::AbstractVector, α, β, MKN) where {T}
   @turbo for m ∈ indices((A,y),1)
     yₘ = zero(T)
     for n ∈ indices((A,x),(2,1))
