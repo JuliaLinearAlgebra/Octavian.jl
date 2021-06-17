@@ -3,12 +3,12 @@ module Octavian
 using VectorizationBase, ArrayInterface, LoopVectorization
 
 using VectorizationBase: align, AbstractStridedPointer, zstridedpointer, vsub_nsw, assume,
-    static_sizeof, lazymul, StridedPointer, gesp, pause, pick_vector_width, has_feature,
-    num_cache_levels, cache_size, num_cores, num_cores, cache_inclusive, cache_linesize, ifelse
-using LoopVectorization: maybestaticsize, preserve_buffer, CloseOpen, UpperBoundedInteger
-using ArrayInterface: OptionallyStaticUnitRange, size, strides, offsets, indices,
-    static_length, static_first, static_last, axes, dense_dims, stride_rank
-    
+    static_sizeof, StridedPointer, gesp, pause, pick_vector_width, has_feature,
+    cache_size, num_cores, num_cores, cache_inclusive, cache_linesize
+using LoopVectorization: preserve_buffer, CloseOpen, UpperBoundedInteger
+using ArrayInterface: size, strides, offsets, indices, axes
+using IfElse: ifelse
+
 using Static: StaticInt, Zero, One, StaticBool, True, False, gt, eq, StaticFloat64,
     roundtostaticint, floortostaticint
 using StrideArraysCore: MemoryBuffer
