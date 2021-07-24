@@ -1,12 +1,15 @@
 
+@inline function first_cache_buffer(::Val{T}) where {T}
+  first_cache_buffer(Val{T}(), first_cache_size(Val(T)))
+end
 if Sys.WORD_SIZE == 32
-    @inline function first_cache_buffer(::Val{T}) where {T}
-        reinterpret(Ptr{T}, ACACHEPTR[] + Threads.threadid() * first_cache_size() - first_cache_size())
-    end
+  @inline function first_cache_buffer(::Val{T}, N) where {T}
+    reinterpret(Ptr{T}, ACACHEPTR[] + Threads.threadid() * N - N)
+  end
 else
-    @inline function first_cache_buffer(::Val{T}) where {T}
-        MemoryBuffer{T}(undef, first_cache_size(Val(T)))
-    end
+  @inline function first_cache_buffer(::Val{T}, ::StaticInt{N}) where {T,N}
+    MemoryBuffer{N,T}(undef)
+  end
 end
 
 BCache(i::Integer) = BCache(BCACHEPTR[]+cld_fast(second_cache_size()*i, Threads.nthreads()), i % UInt)

@@ -296,134 +296,144 @@ end
 end
 
 # This funciton is sort of a `pun`. It splits aggressively (it does a lot of "splitin'"), which often means it will split-N.
-function matmulsplitn!(C::AbstractStridedPointer{T}, A, B, α, β, ::StaticInt{Mc}, M, K, N, nspawn, ::Val{PACK}) where {T, Mc, PACK}
-    Mᵣ, Nᵣ = matmul_params(Val(T))
-    W = pick_vector_width(T)
-    MᵣW = Mᵣ*W
-    _Mblocks, Nblocks = divide_blocks(Val(T), M, cld_fast(N, Nᵣ), nspawn, W)
-    Mbsize, Mrem, Mremfinal, Mblocks = split_m(M, _Mblocks, W)
-    # Nblocks = min(N, _Nblocks)
-    Nbsize, Nrem = divrem_fast(N, Nblocks)
+function matmulsplitn!(C::AbstractStridedPointer{T}, A, B, α, β, ::StaticInt{Mc}, M, K, N, threads, ::Val{PACK}) where {T, Mc, PACK}
+  Mᵣ, Nᵣ = matmul_params(Val(T))
+  W = pick_vector_width(T)
+  MᵣW = Mᵣ*W
+  _Mblocks, Nblocks = divide_blocks(Val(T), M, cld_fast(N, Nᵣ), threads.i%Int + 1, W)
+  Mbsize, Mrem, Mremfinal, Mblocks = split_m(M, _Mblocks, W)
+  # Nblocks = min(N, _Nblocks)
+  Nbsize, Nrem = divrem_fast(N, Nblocks)
 
-    _nspawn = Mblocks * Nblocks
-    Mbsize_Mrem, Mbsize_ = promote(Mbsize +     W, Mbsize)
-    Nbsize_Nrem, Nbsize_ = promote(Nbsize + One(), Nbsize)
-
-    let _A = A, _B = B, _C = C, n = 0, tnum = 0, Nrc = Nblocks - Nrem, Mrc = Mblocks - Mrem, __Mblocks = Mblocks - One()
-        while true
-            nsize = ifelse(Nblocks > Nrc, Nbsize_Nrem, Nbsize_); Nblocks -= 1
-            let _A = _A, _C = _C, __Mblocks = __Mblocks
-                while __Mblocks != 0
-                    msize = ifelse(__Mblocks ≥ Mrc, Mbsize_Mrem, Mbsize_); __Mblocks -= 1
-                    launch_thread_mul!(_C, _A, _B, α, β, msize, K, nsize, (tnum += 1), Val{PACK}())
-                    _A = gesp(_A, (msize, Zero()))
-                    _C = gesp(_C, (msize, Zero()))
-                end
-                if Nblocks != 0
-                    launch_thread_mul!(_C, _A, _B, α, β, Mremfinal, K, nsize, (tnum += 1), Val{PACK}())
-                else
-                    call_loopmul!(_C, _A, _B, α, β, Mremfinal, K, nsize, Val{PACK}())
-                    waitonmultasks(CloseOpen(One(), _nspawn))
-                    return
-                end
-            end
-            _B = gesp(_B, (Zero(), nsize))
-            _C = gesp(_C, (Zero(), nsize))
+  _nspawn = Mblocks * Nblocks
+  Mbsize_Mrem, Mbsize_ = promote(Mbsize +     W, Mbsize)
+  Nbsize_Nrem, Nbsize_ = promote(Nbsize + One(), Nbsize)
+  (ti, tnum, tuu) = Polyester.initial_state(threads)
+  let _A = A, _B = B, _C = C, n = 0, Nrc = Nblocks - Nrem, Mrc = Mblocks - Mrem, __Mblocks = Mblocks - One()
+    while true
+      nsize = ifelse(Nblocks > Nrc, Nbsize_Nrem, Nbsize_); Nblocks -= 1
+      let _A = _A, _C = _C, __Mblocks = __Mblocks
+        while __Mblocks != 0
+          msize = ifelse(__Mblocks ≥ Mrc, Mbsize_Mrem, Mbsize_); __Mblocks -= 1
+          (ti, tnum, tuu) = Polyester.iter(ti, tnum, tuu)
+          launch_thread_mul!(_C, _A, _B, α, β, msize, K, nsize, tnum, Val{PACK}())
+          _A = gesp(_A, (msize, Zero()))
+          _C = gesp(_C, (msize, Zero()))
         end
+        if Nblocks != 0
+          (ti, tnum, tuu) = Polyester.iter(ti, tnum, tuu)
+          launch_thread_mul!(_C, _A, _B, α, β, Mremfinal, K, nsize, tnum, Val{PACK}())
+        else
+          call_loopmul!(_C, _A, _B, α, β, Mremfinal, K, nsize, Val{PACK}())
+          waitonmultasks(threads, _nspawn)
+          return
+        end
+      end
+      _B = gesp(_B, (Zero(), nsize))
+      _C = gesp(_C, (Zero(), nsize))
     end
+  end
 end
 
 function __matmul!(
     C::AbstractStridedPointer{T}, A::AbstractStridedPointer, B::AbstractStridedPointer, α, β, M, K, N, nthread
 ) where {T}
-    Mᵣ, Nᵣ = matmul_params(Val(T))
-    W = pick_vector_width(T)
-    Mc, Kc, Nc = block_sizes(Val(T))
-    MᵣW = Mᵣ*W
+  Mᵣ, Nᵣ = matmul_params(Val(T))
+  W = pick_vector_width(T)
+  Mc, Kc, Nc = block_sizes(Val(T))
+  MᵣW = Mᵣ*W
 
-    # Not taking the fast path
-    # But maybe we don't want to thread anyway
-    # Maybe this is nested, or we have ≤ 1 threads
-    nt = _nthreads()
-    _nthread = nthread === nothing ? nt : min(nt, nthread)
-    if _nthread < 2
-        matmul_st_pack_dispatcher!(C, A, B, α, β, M, K, N)
-        return
-    end
-    # We are threading, but how many threads?
-    nspawn = if (Sys.ARCH === :x86_64) || (Sys.ARCH === :i686)
-        clamp(div_fast(M * N, StaticInt{128}() * W), 1, _nthread)
-    else
-        clamp(div_fast(M * N, StaticInt{256}() * W), 1, _nthread)
-    end
-    # nkern = cld_fast(M * N,  MᵣW * Nᵣ)
-    
-    # Approach:
-    # Check if we don't want to pack A,
-    #    if not, aggressively subdivide
-    # if so, check if we don't want to pack B
-    #    if not, check if we want to thread `N` loop anyway
-    #       if so, divide `M` first, then use ratio of desired divisions / divisions along `M` to calc divisions along `N`
-    #       if not, only thread along `M`. These don't need syncing, as we're not packing `B`
-    #    if so, `matmul_pack_A_and_B!`
-    #
-    # MᵣW * (MᵣW_mul_factor - One()) # gives a smaller Mc, then
-    # if 2M/nspawn is less than it, we don't don't `A`
-    # First check is: do we just want to split aggressively?
-    mᵣ, nᵣ = matmul_params(Val(T))
-    if dontpack(A, M, K, Mc, Kc, T, nspawn) || (W ≥ M) || (nᵣ*((num_cores() ≥ StaticInt(8)) ? max(nspawn,8) : 8) ≥ N)
-        # `nᵣ*nspawn ≥ N` is needed at the moment to avoid accidentally splitting `N` to be `< nᵣ` while packing
-        # Should probably handle that with a smarter splitting function...
-        matmulsplitn!(C, A, B, α, β, Mc, M, K, N, nspawn, Val{false}())
-    elseif (bcache_count() === Zero()) || ((nspawn*(W+W) > M) || (contiguousstride1(B) ? (roundtostaticint(Kc * Nc * R₂Default()) ≥ K * N) : (firstbytestride(B) ≤ 1600)))
-        matmulsplitn!(C, A, B, α, β, Mc, M, K, N, nspawn, Val{true}())
-    else # TODO: Allow splitting along `N` for `matmul_pack_A_and_B!`
-        matmul_pack_A_and_B!(C, A, B, α, β, M, K, N, nspawn, W₁Default(), W₂Default(), R₁Default(), R₂Default())
-    end
-    nothing
+  # Not taking the fast path
+  # But maybe we don't want to thread anyway
+  # Maybe this is nested, or we have ≤ 1 threads
+  nt = _nthreads()
+  _nthread = nthread === nothing ? nt : min(nt, nthread)
+  if _nthread < 2
+    @label SINGLETHREAD
+    matmul_st_pack_dispatcher!(C, A, B, α, β, M, K, N)
+    return
+  end
+  # We are threading, but how many threads?
+  _nrequest = if (Sys.ARCH === :x86_64) || (Sys.ARCH === :i686)
+    clamp(div_fast(M * N, StaticInt{128}() * W), 0, _nthread-1)
+  else
+    clamp(div_fast(M * N, StaticInt{256}() * W), 0, _nthread-1)
+  end
+  # nkern = cld_fast(M * N,  MᵣW * Nᵣ)
+  threads, torelease = Polyester.request_threads(Threads.threadid()%UInt32, _nrequest - 1)
+  nrequest = threads.i
+  iszero(nrequest) && @goto SINGLETHREAD
+  nspawn = nrequest + 1
+  # Approach:
+  # Check if we don't want to pack A,
+  #    if not, aggressively subdivide
+  # if so, check if we don't want to pack B
+  #    if not, check if we want to thread `N` loop anyway
+  #       if so, divide `M` first, then use ratio of desired divisions / divisions along `M` to calc divisions along `N`
+  #       if not, only thread along `M`. These don't need syncing, as we're not packing `B`
+  #    if so, `matmul_pack_A_and_B!`
+  #
+  # MᵣW * (MᵣW_mul_factor - One()) # gives a smaller Mc, then
+  # if 2M/nspawn is less than it, we don't don't `A`
+  # First check is: do we just want to split aggressively?
+  mᵣ, nᵣ = matmul_params(Val(T))
+  if dontpack(A, M, K, Mc, Kc, T, nspawn) || (W ≥ M) || (nᵣ*((num_cores() ≥ StaticInt(8)) ? max(nspawn,8) : 8) ≥ N)
+    # `nᵣ*nspawn ≥ N` is needed at the moment to avoid accidentally splitting `N` to be `< nᵣ` while packing
+    # Should probably handle that with a smarter splitting function...
+    matmulsplitn!(C, A, B, α, β, Mc, M, K, N, threads, Val{false}())
+  elseif (bcache_count() === Zero()) || ((nspawn*(W+W) > M) || (contiguousstride1(B) ? (roundtostaticint(Kc * Nc * R₂Default()) ≥ K * N) : (firstbytestride(B) ≤ 1600)))
+    matmulsplitn!(C, A, B, α, β, Mc, M, K, N, threads, Val{true}())
+  else # TODO: Allow splitting along `N` for `matmul_pack_A_and_B!`
+    matmul_pack_A_and_B!(C, A, B, α, β, M, K, N, threads, W₁Default(), W₂Default(), R₁Default(), R₂Default())
+  end
+  Polyester.free_threads!(torelease)
+  nothing
 end
 
 
 # If tasks is [0,1,2,3] (e.g., `CloseOpen(0,4)`), it will wait on `MULTASKS[i]` for `i = [1,2,3]`.
-function waitonmultasks(tasks)
-    for tid ∈ tasks
-        wait(tid)
-    end
+function waitonmultasks(threads, nthread)
+  (ti, tnum, tuu) = Polyester.initial_state(threads)
+  for _ ∈ CloseOpen(One(), nthread)
+    (ti, tnum, tuu) = Polyester.iter(ti, tnum, tuu)
+    wait(tnum)
+  end
 end
 
 @inline allocref(::StaticInt{N}) where {N} = Ref{NTuple{N,UInt8}}()
 function matmul_pack_A_and_B!(
-    C::AbstractStridedPointer{T}, A::AbstractStridedPointer, B::AbstractStridedPointer, α, β, M, K, N,
-    tospawn::Int, ::StaticFloat64{W₁}, ::StaticFloat64{W₂}, ::StaticFloat64{R₁}, ::StaticFloat64{R₂}#, ::Val{1}
-) where {T,W₁,W₂,R₁,R₂}
-    W = pick_vector_width(T)
-    mᵣ, nᵣ = matmul_params(Val(T))
-    mᵣW = mᵣ * W
-    # atomicsync = Ref{NTuple{16,UInt}}()
-    Mbsize, Mrem, Mremfinal, _to_spawn = split_m(M, tospawn, W) # M is guaranteed to be > W because of `W ≥ M` condition for `jmultsplitn!`...
-    atomicsync = allocref((StaticInt{1}()+num_cores())*cache_linesize())
-    p = align(reinterpret(Ptr{UInt32}, Base.unsafe_convert(Ptr{UInt8}, atomicsync)))
-    GC.@preserve atomicsync begin
-        for i ∈ CloseOpen(_to_spawn)
-            _atomic_store!(reinterpret(Ptr{UInt64}, p) + i*cache_linesize(), 0x0000000000000000)
-        end
-        Mblock_Mrem, Mblock_ = promote(Mbsize + W, Mbsize)
-        u_to_spawn = _to_spawn % UInt
-        tid = 0
-        bc = _use_bcache()
-        bc_ptr = Base.unsafe_convert(typeof(pointer(C)), pointer(bc))
-        last_id = _to_spawn - One()
-        for m ∈ CloseOpen(last_id) # ...thus the fact that `CloseOpen()` iterates at least once is okay.
-            Mblock = ifelse(m < Mrem, Mblock_Mrem, Mblock_)
-            launch_thread_mul!(C, A, B, α, β, Mblock, K, N, p, bc_ptr, m % UInt, u_to_spawn, StaticFloat64{W₁}(),StaticFloat64{W₂}(),StaticFloat64{R₁}(),StaticFloat64{R₂}())
-            A = gesp(A, (Mblock, Zero()))
-            C = gesp(C, (Mblock, Zero()))
-        end
-        sync_mul!(C, A, B, α, β, Mremfinal, K, N, p, bc_ptr, last_id % UInt, u_to_spawn, StaticFloat64{W₁}(), StaticFloat64{W₂}(), StaticFloat64{R₁}(), StaticFloat64{R₂}())
-        waitonmultasks(CloseOpen(One(), _to_spawn))
+  C::AbstractStridedPointer{T}, A::AbstractStridedPointer, B::AbstractStridedPointer, α, β, M, K, N,
+  threads, ::StaticFloat64{W₁}, ::StaticFloat64{W₂}, ::StaticFloat64{R₁}, ::StaticFloat64{R₂}#, ::Val{1}
+  ) where {T,W₁,W₂,R₁,R₂}
+  W = pick_vector_width(T)
+  mᵣ, nᵣ = matmul_params(Val(T))
+  mᵣW = mᵣ * W
+  # atomicsync = Ref{NTuple{16,UInt}}()
+  Mbsize, Mrem, Mremfinal, _to_spawn = split_m(M, threads.i%Int + 1, W) # M is guaranteed to be > W because of `W ≥ M` condition for `jmultsplitn!`...
+  atomicsync = allocref((StaticInt{1}()+num_cores())*cache_linesize())
+  p = align(reinterpret(Ptr{UInt32}, Base.unsafe_convert(Ptr{UInt8}, atomicsync)))
+  GC.@preserve atomicsync begin
+    for i ∈ CloseOpen(_to_spawn)
+      _atomic_store!(reinterpret(Ptr{UInt64}, p) + i*cache_linesize(), 0x0000000000000000)
     end
-    _free_bcache!(bc)
-    return
+    Mblock_Mrem, Mblock_ = promote(Mbsize + W, Mbsize)
+    u_to_spawn = _to_spawn % UInt
+    (ti, tnum, tuu) = Polyester.initial_state(threads)
+    bc = _use_bcache()
+    bc_ptr = Base.unsafe_convert(typeof(pointer(C)), pointer(bc))
+    last_id = _to_spawn - One()
+    for m ∈ CloseOpen(last_id) # ...thus the fact that `CloseOpen()` iterates at least once is okay.
+      Mblock = ifelse(m < Mrem, Mblock_Mrem, Mblock_)
+      (ti, tnum, tuu) = Polyester.iter(ti, tnum, tuu)
+      launch_thread_mul!(C, A, B, α, β, Mblock, K, N, p, bc_ptr, tnum, m % UInt, u_to_spawn, StaticFloat64{W₁}(),StaticFloat64{W₂}(),StaticFloat64{R₁}(),StaticFloat64{R₂}())
+      A = gesp(A, (Mblock, Zero()))
+      C = gesp(C, (Mblock, Zero()))
+    end
+    sync_mul!(C, A, B, α, β, Mremfinal, K, N, p, bc_ptr, last_id % UInt, u_to_spawn, StaticFloat64{W₁}(), StaticFloat64{W₂}(), StaticFloat64{R₁}(), StaticFloat64{R₂}())
+    waitonmultasks(threads, _to_spawn)
+  end
+  _free_bcache!(bc)
+  return
 end
 
 function sync_mul!(
