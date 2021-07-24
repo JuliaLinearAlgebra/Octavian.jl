@@ -9,6 +9,7 @@ function matmul_pack_ab!(C, A, B)
   GC.@preserve C A B begin
     if nspawn > 1
       threads, torelease = Octavian.Polyester.request_threads(Threads.threadid(), nspawn-1)
+      @assert threads.i < Threads.nthreads()
       Octavian.matmul_pack_A_and_B!(
         zc, za, zb, Octavian.StaticInt{1}(), Octavian.StaticInt{0}(), M, K, N, threads,
         Octavian.W₁Default(), Octavian.W₂Default(), Octavian.R₁Default(), Octavian.R₂Default()
