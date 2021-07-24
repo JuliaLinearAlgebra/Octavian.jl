@@ -393,11 +393,14 @@ end
 
 # If tasks is [0,1,2,3] (e.g., `CloseOpen(0,4)`), it will wait on `MULTASKS[i]` for `i = [1,2,3]`.
 function waitonmultasks(threads, nthread)
-  (tnum, tuu) = Polyester.initial_state(threads)
-  for _ ∈ CloseOpen(One(), nthread)
-    (tnum, tuu) = Polyester.iter(tnum, tuu)
-    wait(tnum)
+  for (_,tid) ∈ threads
+    wait(tid)
   end
+  # (tnum, tuu) = Polyester.initial_state(threads)
+  # for _ ∈ CloseOpen(One(), nthread)
+  #   (tnum, tuu) = Polyester.iter(tnum, tuu)
+  #   wait(tnum)
+  # end
 end
 
 @inline allocref(::StaticInt{N}) where {N} = Ref{NTuple{N,UInt8}}()
@@ -412,7 +415,6 @@ function matmul_pack_A_and_B!(
   Mbsize, Mrem, Mremfinal, _to_spawn = split_m(M, threads.i%Int + 1, W) # M is guaranteed to be > W because of `W ≥ M` condition for `jmultsplitn!`...
   atomicsync = allocref((StaticInt{1}()+num_cores())*cache_linesize())
   p = align(reinterpret(Ptr{UInt32}, Base.unsafe_convert(Ptr{UInt8}, atomicsync)))
-  j = 0
   GC.@preserve atomicsync begin
     for i ∈ CloseOpen(_to_spawn)
       _atomic_store!(reinterpret(Ptr{UInt64}, p) + i*cache_linesize(), 0x0000000000000000)
@@ -426,7 +428,6 @@ function matmul_pack_A_and_B!(
     for m ∈ CloseOpen(last_id) # ...thus the fact that `CloseOpen()` iterates at least once is okay.
       Mblock = ifelse(m < Mrem, Mblock_Mrem, Mblock_)
       (tnum, tuu) = Polyester.iter(tnum, tuu)
-      j+=1
       launch_thread_mul!(C, A, B, α, β, Mblock, K, N, p, bc_ptr, tnum, m % UInt, u_to_spawn, StaticFloat64{W₁}(),StaticFloat64{W₂}(),StaticFloat64{R₁}(),StaticFloat64{R₂}())
       A = gesp(A, (Mblock, Zero()))
       C = gesp(C, (Mblock, Zero()))
@@ -434,7 +435,6 @@ function matmul_pack_A_and_B!(
     sync_mul!(C, A, B, α, β, Mremfinal, K, N, p, bc_ptr, last_id % UInt, u_to_spawn, StaticFloat64{W₁}(), StaticFloat64{W₂}(), StaticFloat64{R₁}(), StaticFloat64{R₂}())
     waitonmultasks(threads, _to_spawn)
   end
-  @show threads.i, j, length(CloseOpen(One(),_to_spawn))
   _free_bcache!(bc)
   return
 end
