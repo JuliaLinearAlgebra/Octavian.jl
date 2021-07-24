@@ -308,20 +308,20 @@ function matmulsplitn!(C::AbstractStridedPointer{T}, A, B, α, β, ::StaticInt{M
   _nspawn = Mblocks * Nblocks
   Mbsize_Mrem, Mbsize_ = promote(Mbsize +     W, Mbsize)
   Nbsize_Nrem, Nbsize_ = promote(Nbsize + One(), Nbsize)
-  (ti, tnum, tuu) = Polyester.initial_state(threads)
+  (tnum, tuu) = Polyester.initial_state(threads)
   let _A = A, _B = B, _C = C, n = 0, Nrc = Nblocks - Nrem, Mrc = Mblocks - Mrem, __Mblocks = Mblocks - One()
     while true
       nsize = ifelse(Nblocks > Nrc, Nbsize_Nrem, Nbsize_); Nblocks -= 1
       let _A = _A, _C = _C, __Mblocks = __Mblocks
         while __Mblocks != 0
           msize = ifelse(__Mblocks ≥ Mrc, Mbsize_Mrem, Mbsize_); __Mblocks -= 1
-          (ti, tnum, tuu) = Polyester.iter(ti, tnum, tuu)
+          (tnum, tuu) = Polyester.iter(tnum, tuu)
           launch_thread_mul!(_C, _A, _B, α, β, msize, K, nsize, tnum, Val{PACK}())
           _A = gesp(_A, (msize, Zero()))
           _C = gesp(_C, (msize, Zero()))
         end
         if Nblocks != 0
-          (ti, tnum, tuu) = Polyester.iter(ti, tnum, tuu)
+          (tnum, tuu) = Polyester.iter(tnum, tuu)
           launch_thread_mul!(_C, _A, _B, α, β, Mremfinal, K, nsize, tnum, Val{PACK}())
         else
           call_loopmul!(_C, _A, _B, α, β, Mremfinal, K, nsize, Val{PACK}())
@@ -393,9 +393,9 @@ end
 
 # If tasks is [0,1,2,3] (e.g., `CloseOpen(0,4)`), it will wait on `MULTASKS[i]` for `i = [1,2,3]`.
 function waitonmultasks(threads, nthread)
-  (ti, tnum, tuu) = Polyester.initial_state(threads)
+  (tnum, tuu) = Polyester.initial_state(threads)
   for _ ∈ CloseOpen(One(), nthread)
-    (ti, tnum, tuu) = Polyester.iter(ti, tnum, tuu)
+    (tnum, tuu) = Polyester.iter(tnum, tuu)
     wait(tnum)
   end
 end
@@ -418,13 +418,13 @@ function matmul_pack_A_and_B!(
     end
     Mblock_Mrem, Mblock_ = promote(Mbsize + W, Mbsize)
     u_to_spawn = _to_spawn % UInt
-    (ti, tnum, tuu) = Polyester.initial_state(threads)
+    (tnum, tuu) = Polyester.initial_state(threads)
     bc = _use_bcache()
     bc_ptr = Base.unsafe_convert(typeof(pointer(C)), pointer(bc))
     last_id = _to_spawn - One()
     for m ∈ CloseOpen(last_id) # ...thus the fact that `CloseOpen()` iterates at least once is okay.
       Mblock = ifelse(m < Mrem, Mblock_Mrem, Mblock_)
-      (ti, tnum, tuu) = Polyester.iter(ti, tnum, tuu)
+      (tnum, tuu) = Polyester.iter(tnum, tuu)
       launch_thread_mul!(C, A, B, α, β, Mblock, K, N, p, bc_ptr, tnum, m % UInt, u_to_spawn, StaticFloat64{W₁}(),StaticFloat64{W₂}(),StaticFloat64{R₁}(),StaticFloat64{R₂}())
       A = gesp(A, (Mblock, Zero()))
       C = gesp(C, (Mblock, Zero()))
