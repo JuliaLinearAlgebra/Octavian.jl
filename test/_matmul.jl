@@ -3,7 +3,7 @@
 # `n_values`
 # `k_values`
 # `m_values`
-
+if false
 for T ∈ (ComplexF32, ComplexF64, Complex{Int64}, Complex{Int32})
     @time @testset "Matrix Multiply $T $(testset_name_suffix)" begin
         for n ∈ n_values
@@ -73,7 +73,7 @@ for T ∈ (ComplexF32, ComplexF64, Complex{Int64}, Complex{Int32})
     end
     testset_name_suffix === "(coverage)" && break
 end
-
+end
 @time @testset "Matrix Multiply Float64 $(testset_name_suffix)" begin
     T = Float64
     for n ∈ n_values
