@@ -393,14 +393,14 @@ end
 
 # If tasks is [0,1,2,3] (e.g., `CloseOpen(0,4)`), it will wait on `MULTASKS[i]` for `i = [1,2,3]`.
 function waitonmultasks(threads, nthread)
-  for (_,tid) ∈ threads
-    wait(tid)
-  end
-  # (tnum, tuu) = Polyester.initial_state(threads)
-  # for _ ∈ CloseOpen(One(), nthread)
-  #   (tnum, tuu) = Polyester.iter(tnum, tuu)
-  #   wait(tnum)
+  # for (_,tid) ∈ threads
+  #   wait(tid)
   # end
+  (tnum, tuu) = Polyester.initial_state(threads)
+  for _ ∈ CloseOpen(One(), nthread)
+    (tnum, tuu) = Polyester.iter(tnum, tuu)
+    wait(tnum)
+  end
 end
 
 @inline allocref(::StaticInt{N}) where {N} = Ref{NTuple{N,UInt8}}()

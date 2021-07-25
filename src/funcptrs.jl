@@ -89,7 +89,7 @@ end
 @inline function launch_thread_mul!(
   C, A, B, α, β, M, K, N, ap, bcp, tid, id, tt, ::StaticFloat64{W₁},::StaticFloat64{W₂},::StaticFloat64{R₁},::StaticFloat64{R₂}
 ) where {W₁,W₂,R₁,R₂}
-  launch(tid, C, A, B, α, β, M, K, N, ap, bcp, tid, tt) do p, C, A, B, α, β, M, K, N, ap, bcp, tid, tt
+  launch(tid, C, A, B, α, β, M, K, N, ap, bcp, id, tt) do p, C, A, B, α, β, M, K, N, ap, bcp, id, tt
     Base.@_inline_meta
     setup_syncmul!(
       p, C, A, B, α, β, M, K, N, ap, bcp, id, tt,
