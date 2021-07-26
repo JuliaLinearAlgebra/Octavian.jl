@@ -220,15 +220,15 @@ end
 Splits both `M` and `N` into blocks when trying to spawn a large number of threads relative to the size of the matrices.
 """
 @inline function divide_blocks(::Val{T}, M, Ntotal, _nspawn, W) where {T}
-    _nspawn == num_cores() && return find_first_acceptable(Val(T), M, W)
-    mᵣ, nᵣ = matmul_params(Val(T))
-    Miter = clamp(div_fast(M, W*mᵣ * MᵣW_mul_factor()), 1, _nspawn)
+  _nspawn == num_cores() && return find_first_acceptable(Val(T), M, W)
+  mᵣ, nᵣ = matmul_params(Val(T))
+  Miter = clamp(div_fast(M, W*mᵣ * MᵣW_mul_factor()), 1, _nspawn)
+  nspawn = div_fast(_nspawn, Miter)
+  if (nspawn ≤ 1) & (Miter < _nspawn)
+    # rebalance Miter
+    Miter = cld_fast(_nspawn, cld_fast(_nspawn, Miter))
     nspawn = div_fast(_nspawn, Miter)
-    if (nspawn ≤ 1) & (Miter < _nspawn)
-        # rebalance Miter
-        Miter = cld_fast(_nspawn, cld_fast(_nspawn, Miter))
-        nspawn = div_fast(_nspawn, Miter)
-    end
-    Miter, cld_fast(Ntotal, max(2, cld_fast(Ntotal, nspawn)))
+  end
+  Miter, cld_fast(Ntotal, max(2, cld_fast(Ntotal, nspawn)))
 end
 

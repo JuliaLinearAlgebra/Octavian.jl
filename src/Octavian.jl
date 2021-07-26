@@ -8,14 +8,12 @@ using VectorizationBase: align, AbstractStridedPointer, zstridedpointer, vsub_ns
 using LoopVectorization: preserve_buffer, CloseOpen, UpperBoundedInteger
 using ArrayInterface: size, strides, offsets, indices, axes
 using IfElse: ifelse
-
+using Polyester
 using Static: StaticInt, Zero, One, StaticBool, True, False, gt, eq, StaticFloat64,
     roundtostaticint, floortostaticint
-using StrideArraysCore: MemoryBuffer
+using ManualMemory: MemoryBuffer, load, store!
 
-using ThreadingUtilities:
-    _atomic_add!, _atomic_load, _atomic_store!,    
-    launch, wait, load, store!
+using ThreadingUtilities: _atomic_add!, _atomic_load, _atomic_store!, launch, wait
 
 export StaticInt
 export matmul!
