@@ -11,11 +11,9 @@ using IfElse: ifelse
 using Polyester
 using Static: StaticInt, Zero, One, StaticBool, True, False, gt, eq, StaticFloat64,
     roundtostaticint, floortostaticint
-using ManualMemory: MemoryBuffer
+using ManualMemory: MemoryBuffer, load, store!
 
-using ThreadingUtilities:
-    _atomic_add!, _atomic_load, _atomic_store!,    
-    launch, wait, load, store!
+using ThreadingUtilities: _atomic_add!, _atomic_load, _atomic_store!, launch, wait
 
 export StaticInt
 export matmul!

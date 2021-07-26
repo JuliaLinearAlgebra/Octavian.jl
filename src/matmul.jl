@@ -417,7 +417,7 @@ function matmul_pack_A_and_B!(
   p = align(reinterpret(Ptr{UInt32}, Base.unsafe_convert(Ptr{UInt8}, atomicsync)))
   GC.@preserve atomicsync begin
     for i ∈ CloseOpen(_to_spawn)
-      _atomic_store!(reinterpret(Ptr{UInt64}, p) + i*cache_linesize(), 0x0000000000000000)
+      store!(reinterpret(Ptr{UInt64}, p) + i*cache_linesize(), 0x0000000000000000)
     end
     Mblock_Mrem, Mblock_ = promote(Mbsize + W, Mbsize)
     u_to_spawn = _to_spawn % UInt
@@ -517,7 +517,7 @@ function sync_mul!(
   nothing
 end
 
-function _matmul!(y::AbstractVector{T}, A::AbstractMatrix, x::AbstractVector, α, β, MKN, contig_axis) where {T}
+function _matmul!(y::AbstractVector{T}, A::AbstractMatrix, x::AbstractVector, α, β, _, __) where {T}
   @tturbo for m ∈ indices((A,y),1)
     yₘ = zero(T)
     for n ∈ indices((A,x),(2,1))
@@ -527,7 +527,7 @@ function _matmul!(y::AbstractVector{T}, A::AbstractMatrix, x::AbstractVector, α
   end
   return y
 end
-function _matmul_serial!(y::AbstractVector{T}, A::AbstractMatrix, x::AbstractVector, α, β, MKN) where {T}
+function _matmul_serial!(y::AbstractVector{T}, A::AbstractMatrix, x::AbstractVector, α, β, _) where {T}
   @turbo for m ∈ indices((A,y),1)
     yₘ = zero(T)
     for n ∈ indices((A,x),(2,1))
