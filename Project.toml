@@ -1,7 +1,7 @@
 name = "Octavian"
 uuid = "6fd5a793-0b7e-452c-907f-f8bfe9c57db4"
 authors = ["Mason Protter", "Chris Elrod", "Dilum Aluthge", "contributors"]
-version = "0.3.0"
+version = "0.3.1"
 
 [deps]
 ArrayInterface = "4fba245c-0d91-5ea0-9b3e-6abc04ee57a9"
@@ -19,7 +19,7 @@ IfElse = "0.1"
 LoopVectorization = "0.12.34"
 ManualMemory = "0.1.1"
 Polyester = "0.3.5"
-Static = "0.2"
+Static = "0.2, 0.3"
 ThreadingUtilities = "0.4.6"
 VectorizationBase = "0.20.16"
 julia = "1.6"
