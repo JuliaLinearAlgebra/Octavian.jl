@@ -21,7 +21,7 @@ ManualMemory = "0.1.1"
 Polyester = "0.4"
 Static = "0.2, 0.3"
 ThreadingUtilities = "0.4.6"
-VectorizationBase = "0.21"
+VectorizationBase = "0.21.5"
 julia = "1.6"
 
 [extras]
