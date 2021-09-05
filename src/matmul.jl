@@ -360,7 +360,9 @@ function __matmul!(
     clamp(div_fast(M * N, StaticInt{256}() * W), 0, _nthread-1)
   end
   # nkern = cld_fast(M * N,  MᵣW * Nᵣ)
-  threads, torelease = Polyester.request_threads(Threads.threadid()%UInt32, _nrequest)
+  threads, torelease = Polyester.__request_threads(_nrequest % UInt32, Polyester.worker_pointer())
+  # _threads, _torelease = Polyester.request_threads(Threads.threadid()%UInt32, _nrequest)
+
   nrequest = threads.i
   iszero(nrequest) && @goto SINGLETHREAD
   nspawn = nrequest + 1
