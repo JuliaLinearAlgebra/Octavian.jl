@@ -38,7 +38,8 @@ function default_stridedpointer_quote(::Type{T}, N, Ot) where {T}
   quote
     $(Expr(:meta,:inline))
     st = $st
-    StridedPointer{$T,$N,$C,$B,$R}(ptr, $xt, $o)
+    si = StrideIndex{$N,$R,$C}($xt, $o)
+    stridedpointer(ptr, si, StaticInt{$B}())
   end
 end
 
@@ -66,9 +67,10 @@ end
   Bn = Core.ifelse(B > 1, B+1, B)
   quote
     $(Expr(:meta,:inline))
-    x = $gf(sp, :strd)
+    x = strides(sp)
     x0 = $gf(x, 1, false)
-    StridedPointer{$T,$(N+1),$Cn,$Bn,$Rn}($gf(sp,:p), $xt, $ot)
+    si = StrideIndex{$(N+1),$Rn,$Cn}($xt, $ot)
+    stridedpointer($gf(sp,:p), si, StaticInt{$Bn}())
   end
 end
 @generated function droplastdim(sp::StridedPointer{T,N,C,B,R}) where {T,N,C,B,R}
@@ -85,9 +87,10 @@ end
   end
   quote
     $(Expr(:meta,:inline))
-    x = $gf(sp, :strd)
-    o = $gf(sp, :offsets)
-    StridedPointer{$T,$(N-1),$Cn,$Bn,$rt}($gf(sp,:p), $xt, $ot)
+    x = strides(sp)
+    o = offsets(sp)
+    si = StrideIndex{$(N-1),$rt,$Cn}($xt, $ot)
+    stridedpointer($gf(sp,:p), si, StaticInt{$Bn}())
   end
 end
 
