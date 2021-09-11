@@ -8,7 +8,7 @@ using VectorizationBase: align, AbstractStridedPointer, zstridedpointer, vsub_ns
 using LoopVectorization: preserve_buffer, CloseOpen, UpperBoundedInteger
 using ArrayInterface: size, strides, offsets, indices, axes, StrideIndex
 using IfElse: ifelse
-using Polyester
+using PolyesterWeave
 using Static: StaticInt, Zero, One, StaticBool, True, False, gt, eq, StaticFloat64,
     roundtostaticint, floortostaticint
 using ManualMemory: MemoryBuffer, load, store!
