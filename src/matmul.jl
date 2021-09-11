@@ -308,20 +308,20 @@ function matmulsplitn!(C::AbstractStridedPointer{T}, A, B, α, β, ::StaticInt{M
   _nspawn = Mblocks * Nblocks
   Mbsize_Mrem, Mbsize_ = promote(Mbsize +     W, Mbsize)
   Nbsize_Nrem, Nbsize_ = promote(Nbsize + One(), Nbsize)
-  (tnum, tuu) = Polyester.initial_state(threads)
+  (tnum, tuu) = PolyesterWeave.initial_state(threads)
   let _A = A, _B = B, _C = C, n = 0, Nrc = Nblocks - Nrem, Mrc = Mblocks - Mrem, __Mblocks = Mblocks - One()
     while true
       nsize = ifelse(Nblocks > Nrc, Nbsize_Nrem, Nbsize_); Nblocks -= 1
       let _A = _A, _C = _C, __Mblocks = __Mblocks
         while __Mblocks != 0
           msize = ifelse(__Mblocks ≥ Mrc, Mbsize_Mrem, Mbsize_); __Mblocks -= 1
-          (tnum, tuu) = Polyester.iter(tnum, tuu)
+          (tnum, tuu) = PolyesterWeave.iter(tnum, tuu)
           launch_thread_mul!(_C, _A, _B, α, β, msize, K, nsize, tnum, Val{PACK}())
           _A = gesp(_A, (msize, Zero()))
           _C = gesp(_C, (msize, Zero()))
         end
         if Nblocks != 0
-          (tnum, tuu) = Polyester.iter(tnum, tuu)
+          (tnum, tuu) = PolyesterWeave.iter(tnum, tuu)
           launch_thread_mul!(_C, _A, _B, α, β, Mremfinal, K, nsize, tnum, Val{PACK}())
         else
           call_loopmul!(_C, _A, _B, α, β, Mremfinal, K, nsize, Val{PACK}())
@@ -360,8 +360,8 @@ function __matmul!(
     clamp(div_fast(M * N, StaticInt{256}() * W), 0, _nthread-1)
   end
   # nkern = cld_fast(M * N,  MᵣW * Nᵣ)
-  threads, torelease = Polyester.__request_threads(_nrequest % UInt32, Polyester.worker_pointer())
-  # _threads, _torelease = Polyester.request_threads(Threads.threadid()%UInt32, _nrequest)
+  threads, torelease = PolyesterWeave.__request_threads(_nrequest % UInt32, PolyesterWeave.worker_pointer())
+  # _threads, _torelease = PolyesterWeave.request_threads(Threads.threadid()%UInt32, _nrequest)
 
   nrequest = threads.i
   iszero(nrequest) && @goto SINGLETHREAD
@@ -388,7 +388,7 @@ function __matmul!(
   else # TODO: Allow splitting along `N` for `matmul_pack_A_and_B!`
     matmul_pack_A_and_B!(C, A, B, α, β, M, K, N, threads, W₁Default(), W₂Default(), R₁Default(), R₂Default())
   end
-  Polyester.free_threads!(torelease)
+  PolyesterWeave.free_threads!(torelease)
   nothing
 end
 
@@ -398,9 +398,9 @@ function waitonmultasks(threads, nthread)
   # for (_,tid) ∈ threads
   #   wait(tid)
   # end
-  (tnum, tuu) = Polyester.initial_state(threads)
+  (tnum, tuu) = PolyesterWeave.initial_state(threads)
   for _ ∈ CloseOpen(One(), nthread)
-    (tnum, tuu) = Polyester.iter(tnum, tuu)
+    (tnum, tuu) = PolyesterWeave.iter(tnum, tuu)
     wait(tnum)
   end
 end
@@ -423,13 +423,13 @@ function matmul_pack_A_and_B!(
     end
     Mblock_Mrem, Mblock_ = promote(Mbsize + W, Mbsize)
     u_to_spawn = _to_spawn % UInt
-    (tnum, tuu) = Polyester.initial_state(threads)
+    (tnum, tuu) = PolyesterWeave.initial_state(threads)
     bc = _use_bcache()
     bc_ptr = Base.unsafe_convert(typeof(pointer(C)), pointer(bc))
     last_id = _to_spawn - One()
     for m ∈ CloseOpen(last_id) # ...thus the fact that `CloseOpen()` iterates at least once is okay.
       Mblock = ifelse(m < Mrem, Mblock_Mrem, Mblock_)
-      (tnum, tuu) = Polyester.iter(tnum, tuu)
+      (tnum, tuu) = PolyesterWeave.iter(tnum, tuu)
       launch_thread_mul!(C, A, B, α, β, Mblock, K, N, p, bc_ptr, tnum, m % UInt, u_to_spawn, StaticFloat64{W₁}(),StaticFloat64{W₂}(),StaticFloat64{R₁}(),StaticFloat64{R₂}())
       A = gesp(A, (Mblock, Zero()))
       C = gesp(C, (Mblock, Zero()))
