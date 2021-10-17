@@ -52,7 +52,8 @@ for AT in [:AbstractVector, :AbstractMatrix]  # to avoid ambiguity error
             η = ifelse(ArrayInterface.is_lazy_conjugate(_A), StaticInt(-1), StaticInt(1))
             (+ᶻ, -ᶻ) = ifelse(ArrayInterface.is_lazy_conjugate(_C), (-, +), (+, -))
             
-            @tturbo for n ∈ indices((C, B), (3, 2)), m ∈ indices((C, A), 2)
+            # @tturbo for n ∈ indices((C, B), (3, 2)), m ∈ indices((C, A), 2)
+            @turbo for n ∈ indices((C, B), (3, 2)), m ∈ indices((C, A), 2)
                 Cmn_re = zero(T)
                 Cmn_im = zero(T)
                 for k ∈ indices((A, B), (3, 1))
