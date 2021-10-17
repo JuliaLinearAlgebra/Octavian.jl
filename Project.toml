@@ -16,7 +16,7 @@ VectorizationBase = "3d5dd08c-fd9d-11e8-17fa-ed2836048c2f"
 [compat]
 ArrayInterface = "3.1.14"
 IfElse = "0.1"
-LoopVectorization = "0.12.34"
+LoopVectorization = "0.12.86"
 ManualMemory = "0.1.1"
 PolyesterWeave = "0.1.1"
 Static = "0.2, 0.3"
