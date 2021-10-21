@@ -47,5 +47,17 @@
         J1 = ForwardDiff.jacobian((C, A) -> Octavian.matmul!(C, A, B1), C1, A1new, config)
         J2 = ForwardDiff.jacobian((C, A) -> LinearAlgebra.mul!(C, A, B2), C2, A2new, config)
         @test J1 ≈ J2
+
+        # direct version using dual numbers
+        A1dual = zeros(eltype(config), reverse(size(A1))...)
+        A1dual .= A1'
+        C1dual = zeros(eltype(config), size(C1)...)
+
+        A2dual = deepcopy(A1dual)
+        C2dual = deepcopy(C1dual)
+
+        Octavian.matmul!(C1dual, A1dual', B1)
+        Octavian.matmul!(C2dual, A2dual', B2)
+        @test C1dual ≈ C2dual
     end
 end

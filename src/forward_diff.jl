@@ -22,7 +22,7 @@ end
 @inline function _matmul!(_C::AbstractVecOrMat{DualT}, _A::AbstractMatrix{DualT}, B::AbstractVecOrMat,
                           α=One(), β=Zero(), nthread::Nothing=nothing, MKN=nothing) where {TAG, T, DualT <: ForwardDiff.Dual{TAG, T}}
     if all((ArrayInterface.is_dense(_C), ArrayInterface.is_column_major(_C),
-            ArrayInterface.is_dense(_C), ArrayInterface.is_column_major(_C)))
+            ArrayInterface.is_dense(_A), ArrayInterface.is_column_major(_A)))
         # we can avoid the reshape and call the standard method
         A = reinterpret(T, _A)
         C = reinterpret(T, _C)
