@@ -1,4 +1,6 @@
 function __init__()
+  @require ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210" include("forward_diff.jl")
+
   init_acache()
   init_bcache()
   nt = init_num_tasks()
