@@ -2,6 +2,7 @@ import Octavian
 
 import Aqua
 import BenchmarkTools
+import ForwardDiff
 import InteractiveUtils
 import LinearAlgebra
 import LoopVectorization

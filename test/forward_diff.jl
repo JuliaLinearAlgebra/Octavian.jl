@@ -1,8 +1,3 @@
-using Test
-import LinearAlgebra
-
-import Octavian
-import ForwardDiff
 
 @time @testset "ForwardDiff.jl" begin
   m = 5
@@ -24,13 +19,21 @@ import ForwardDiff
   LinearAlgebra.mul!(C2, A2, B2, α, β)
   @test C1 ≈ C2
 
+  # real array from the left
   config = ForwardDiff.JacobianConfig(nothing, C1, B1)
   I = LinearAlgebra.I(size(B1, 2))
 
-  J1 = ForwardDiff.jacobian((C, B) -> Octavian.matmul!(C, A2, B), C2, B2, config)
+  J1 = ForwardDiff.jacobian((C, B) -> Octavian.matmul!(C, A1, B), C1, B1, config)
   @test J1 ≈ kron(I, A1)
 
   J2 = ForwardDiff.jacobian((C, B) -> LinearAlgebra.mul!(C, A2, B), C2, B2, config)
   @test J1 ≈ kron(I, A2)
+  @test J1 ≈ J2
+
+  # real array from the right
+  config = ForwardDiff.JacobianConfig(nothing, C1, A1)
+
+  J1 = ForwardDiff.jacobian((C, A) -> Octavian.matmul!(C, A, B1), C1, A1, config)
+  J2 = ForwardDiff.jacobian((C, A) -> LinearAlgebra.mul!(C, A, B2), C2, A2, config)
   @test J1 ≈ J2
 end
