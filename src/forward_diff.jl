@@ -20,16 +20,25 @@ end
 
 # multiplication of dual matrix by standard vector/matrix from the right
 @inline function _matmul!(_C::AbstractVecOrMat{DualT}, _A::AbstractMatrix{DualT}, B::AbstractVecOrMat,
-                          α=One(), β=Zero(), nthread::Nothing=nothing, MKN=nothing, contig_axis=nothing) where {DualT <: ForwardDiff.Dual}
-    A = real_rep(_A)
-    C = real_rep(_C)
+                          α=One(), β=Zero(), nthread::Nothing=nothing, MKN=nothing) where {TAG, T, DualT <: ForwardDiff.Dual{TAG, T}}
+    if all((ArrayInterface.is_dense(_C), ArrayInterface.is_column_major(_C),
+            ArrayInterface.is_dense(_C), ArrayInterface.is_column_major(_C)))
+        # we can avoid the reshape and call the standard method
+        A = reinterpret(T, _A)
+        C = reinterpret(T, _C)
+        _matmul!(C, A, B, α, β, nthread, MKN)
+    else
+        # we cannot use the standard method directly
+        A = real_rep(_A)
+        C = real_rep(_C)
 
-    @tturbo for n ∈ indices((C, B), (3, 2)), m ∈ indices((C, A), 2), l in indices((C, A), 1)
-        Cₗₘₙ = zero(eltype(C))
-        for k ∈ indices((A, B), (3, 1))
-            Cₗₘₙ += A[l, m, k] * B[k, n]
+        @tturbo for n ∈ indices((C, B), (3, 2)), m ∈ indices((C, A), 2), l in indices((C, A), 1)
+            Cₗₘₙ = zero(eltype(C))
+            for k ∈ indices((A, B), (3, 1))
+                Cₗₘₙ += A[l, m, k] * B[k, n]
+            end
+            C[l, m, n] = α * Cₗₘₙ + β * C[l, m, n]
         end
-        C[l, m, n] = α * Cₗₘₙ + β * C[l, m, n]
     end
 
     _C
