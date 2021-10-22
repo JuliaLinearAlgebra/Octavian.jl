@@ -109,9 +109,9 @@ end
     for k ∈ CloseOpen(K)
       Aₘₖ = A[m,k]
       Cₘₙ += Aₘₖ * B[k,n]
-      Ãₚ[m,k] = Aₘₖ 
+      Ãₚ[m,k] = Aₘₖ
     end
-    C[m,n] = α * Cₘₙ + β * C[m,n] 
+    C[m,n] = α * Cₘₙ + β * C[m,n]
   end
 end
 @inline function alloc_a_pack(K, ::Val{T}) where {T}

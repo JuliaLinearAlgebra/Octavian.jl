@@ -2,6 +2,7 @@ import Octavian
 
 import Aqua
 import BenchmarkTools
+import ForwardDiff
 import InteractiveUtils
 import LinearAlgebra
 import LoopVectorization
@@ -24,6 +25,7 @@ include("integer_division.jl")
 include("macrokernels.jl")
 include("matmul_coverage.jl")
 include("utils.jl")
+include("forward_diff.jl")
 
 if !coverage
     include("matmul_main.jl")
