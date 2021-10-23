@@ -1,8 +1,9 @@
 
+randdual(x, ::Val{N}=Val(3)) where {N} = ForwardDiff.Dual(x, ntuple(_ -> randn(), Val(N))...)
 @time @testset "ForwardDiff.jl" begin
-    m = 5
-    n = 6
-    k = 7
+    m = 53
+    n = 63
+    k = 73
 
     A1 = rand(Float64, m, k)
     B1 = rand(Float64, k, n)
@@ -60,4 +61,11 @@
         Octavian.matmul!(C2dual, A2dual', B2)
         @test C1dual ≈ C2dual
     end
+
+  @testset "two dual arrays" begin
+    A1d = randdual.(A1)
+    B1d = randdual.(B1)
+    @test reinterpret(Float64, Octavian.matmul(A1d, B1d)) ≈ reinterpret(Float64, A1d * B1d)
+    @test reinterpret(Float64, Octavian.matmul(@view(A1d[begin:end-1,:]), B1d)) ≈ reinterpret(Float64, @view(A1d[begin:end-1,:]) * B1d)
+  end
 end
