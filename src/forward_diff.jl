@@ -26,7 +26,7 @@ end
         # we can avoid the reshape and call the standard method
         A = reinterpret(T, _A)
         C = reinterpret(T, _C)
-        _matmul!(C, A, B, α, β, nthread, MKN)
+        _matmul!(C, A, B, α, β, nthread, nothing)
     else
         # we cannot use the standard method directly
         A = real_rep(_A)
@@ -42,4 +42,34 @@ end
     end
 
     _C
+end
+
+_view1(B::AbstractMatrix) = @view(B[1,:])
+_view1(B::AbstractArray{<:Any,3}) = @view(B[1,:,:])
+@inline function _matmul!(_C::AbstractVecOrMat{DualT}, _A::AbstractMatrix{DualT}, _B::AbstractVecOrMat{DualT},
+                          α=One(), β=Zero(), nthread::Nothing=nothing, MKN=nothing) where {TAG, T, P, DualT <: ForwardDiff.Dual{TAG, T, P}}
+  A = real_rep(_A)
+  C = real_rep(_C)
+  B = real_rep(_B)
+  if all((ArrayInterface.is_dense(_C), ArrayInterface.is_column_major(_C),
+          ArrayInterface.is_dense(_A), ArrayInterface.is_column_major(_A)))
+    # we can avoid the reshape and call the standard method
+    Ar = reinterpret(T, _A)
+    Cr = reinterpret(T, _C)
+    _matmul!(Cr, Ar, _view1(B), α, β, nthread, nothing)
+  else
+    # we cannot use the standard method directly
+    @tturbo for n ∈ indices((C, B), 3), m ∈ indices((C, A), 2), l in indices((C, A), 1)
+      Cₗₘₙ = zero(eltype(C))
+      for k ∈ indices((A, B), (3, 2))
+        Cₗₘₙ += A[l, m, k] * B[1, k, n]
+      end
+      C[l, m, n] = α * Cₗₘₙ + β * C[l, m, n]
+    end
+  end
+  Pstatic = static(P)
+  @tturbo for n ∈ indices((B,C),3), m ∈ indices((A,C),2), p ∈ 1:Pstatic, k ∈ indices((A,B),(3,2))
+    C[p+1,m,n] += A[1,m,k] * B[p+1,k,n]
+  end
+  _C
 end
