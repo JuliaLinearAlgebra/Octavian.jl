@@ -68,8 +68,12 @@ _view1(B::AbstractArray{<:Any,3}) = @view(B[1,:,:])
     end
   end
   Pstatic = static(P)
-  @tturbo for n ∈ indices((B,C),3), m ∈ indices((A,C),2), p ∈ 1:Pstatic, k ∈ indices((A,B),(3,2))
-    C[p+1,m,n] += A[1,m,k] * B[p+1,k,n]
+  @tturbo for n ∈ indices((B,C),3), m ∈ indices((A,C),2), p ∈ 1:Pstatic
+    Cₚₘₙ = zero(eltype(C))
+    for k ∈ indices((A,B),(3,2))
+      Cₚₘₙ += A[1,m,k] * B[p+1,k,n]
+    end
+    C[p+1,m,n] = C[p+1,m,n] + α*Cₚₘₙ
   end
   _C
 end

@@ -220,11 +220,13 @@ end
 
 Multiply matrices `A` and `B`.
 """
-@inline function matmul(A::AbstractMatrix, B::AbstractVecOrMat)
+@inline function matmul(A::AbstractMatrix, B::AbstractVecOrMat, α, β)
   C, (M,K,N) = alloc_matmul_product(A, B)
-  matmul!(C, A, B, One(), Zero(), nothing, (M,K,N), ArrayInterface.contiguous_axis(C))
+  matmul!(C, A, B, α, β, nothing, (M,K,N), ArrayInterface.contiguous_axis(C))
   return C
 end
+@inline matmul(A::AbstractMatrix, B::AbstractVecOrMat) = matmul(A, B, One(), Zero())
+@inline matmul(A::AbstractMatrix, B::AbstractVecOrMat, α) = matmul(A, B, α, Zero())
 
 """
     matmul!(C, A, B[, α, β, max_threads])
