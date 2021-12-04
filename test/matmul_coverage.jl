@@ -4,7 +4,6 @@ m_values  = [10, 20, 50, 100, 150, 200]
 
 
 
-include("_matmul.jl")
 typ = get(ENV, "JULIA_TEST_ELTYPE", "ALL")
 types = if typ == "Float64"
   DataType[Float64]

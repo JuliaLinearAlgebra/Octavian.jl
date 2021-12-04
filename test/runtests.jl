@@ -23,12 +23,10 @@ include("block_sizes.jl")
 include("init.jl")
 include("integer_division.jl")
 include("macrokernels.jl")
+include("_matmul.jl")
+coverage || include("matmul_main.jl")
 include("matmul_coverage.jl")
 include("utils.jl")
 include("forward_diff.jl")
-
-if !coverage
-    include("matmul_main.jl")
-end
 
 include("aqua.jl") # run the Aqua.jl tests last
