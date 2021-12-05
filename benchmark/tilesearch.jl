@@ -5,12 +5,14 @@ function matmul_pack_ab!(C, A, B, ::Val{W₁}, ::Val{W₂}, ::Val{R₁}, ::Val{R
   M, N = size(C); K = size(B,1)
   zc, za, zb = Octavian.zstridedpointer.((C,A,B))
   nspawn = VectorizationBase.num_cores()
+  threads, torelease = Octavian.PolyesterWeave.__request_threads((nspawn-1)%UInt32, Octavian.PolyesterWeave.worker_pointer(), nothing)
   t = Inf
   GC.@preserve C A B begin
     for _ ∈ 1:2
-      t = min(t, @elapsed(Octavian.matmul_pack_A_and_B!(zc, za, zb, Octavian.One(), Octavian.Zero(), M, K, N, Int(nspawn), F64(W₁), F64(W₂), F64(R₁), F64(R₂))))
+      t = min(t, @elapsed(Octavian.matmul_pack_A_and_B!(zc, za, zb, Octavian.One(), Octavian.Zero(), M, K, N, threads, F64(W₁), F64(W₂), F64(R₁), F64(R₂))))
     end
   end
+  Octavian.PolyesterWeave.free_threads!(torelease)
   return t
 end
 
@@ -119,15 +121,16 @@ using Optim
 hours = 60.0*60.0; days = 24hours;
 init = Float64[Octavian.W₁Default(), Octavian.W₂Default(), Octavian.R₁Default(), Octavian.R₂Default()]
 lower = 0.75 .* init;
-upper = [1.25init[1], 1.25init[2], 0.75*init[3] + 0.25, 0.75*init[4] + 0.25];
+# upper = [1.25init[1], 1.25init[2], 0.75*init[3] + 0.25, 0.75*init[4] + 0.25];
+upper = [0.9, 1.25init[2], 0.999, 0.999];
 # init = [0.001, 0.9754033943603924, 0.5711159869399494, 0.7547361860432168];
 
+#=
 opt = Optim.optimize(
     matmul_objective, init, ParticleSwarm(lower = lower, upper = upper),
     Optim.Options(iterations = 10^6, time_limit = 8hours)
 );
-
-
+=#
 
 
 

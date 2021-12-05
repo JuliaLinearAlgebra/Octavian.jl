@@ -178,25 +178,47 @@ independently of `M`, this algorithm guarantees all threads are on the same page
 end
 # Takes Nc, calcs Mc and Kc
 @inline function solve_McKc(::Val{T}, M, K, Nc, _α, _β, R₂, R₃, Wfactor) where {T}
-    W = pick_vector_width(T)
-    α = _α * W
-    β = _β * W
-    L₁ₑ =  first_cache_size(Val(T)) * R₂
-    L₂ₑ = second_cache_size(Val(T)) * R₃
+  W = pick_vector_width(T)
+  α = _α * W
+  β = _β * W
+  L₁ₑ =  first_cache_size(Val(T)) * R₂
+  L₂ₑ = second_cache_size(Val(T)) * R₃
 
-    Kc_init⁻¹ = Base.FastMath.max_fast(√(α/L₁ₑ), Nc*inv(L₂ₑ))
-    Kiter = cldapproxi(K, Kc_init⁻¹) # approximate `ceil`
-    Kblock, Krem = divrem_fast(K, Kiter)
-    Kblock_Krem = Kblock + One()
+  Kc_init⁻¹ = Base.FastMath.max_fast(√(α/L₁ₑ), Nc*inv(L₂ₑ))
+  Kiter = cldapproxi(K, Kc_init⁻¹) # approximate `ceil`
+  Kblock, Krem = divrem_fast(K, Kiter)
+  Kblock_Krem = Kblock + One()
 
-    Miter_init = cldapproxi(M * inv(L₁ₑ), Kblock_Krem) # Miter = M * Kc / L₁ₑ
-    Mbsize, Mrem, Mremfinal, Miter = split_m(M, Miter_init, W * Wfactor)
-    Mblock_Mrem = Mbsize + W * Wfactor
-    
-    promote(Mbsize, Mblock_Mrem, Mremfinal, Mrem, Miter), promote(Kblock, Kblock_Krem, Krem, Kiter)
+  Mᵣ = Wfactor * W
+  Mc_init = floor(Int, Base.FastMath.div_fast(L₁ₑ / Mᵣ, Float64(Kblock_Krem)))
+  Mc_init_base = max(0, Mc_init - 1)
+  Kblock_summary = promote(Kblock, Kblock_Krem, Krem, Kiter)
+  if (Mc_init_base ≠ 0) # Mc_init > 1
+    Mbsize = Mc_init_base * Mᵣ
+    Mblocks, Mblocks_rem = divrem_fast(M, Mᵣ)
+    Miter, Mrem = divrem_fast(Mblocks, Mc_init_base)
+    if Miter == 0
+       return (0, 0, Int(M)::Int, 0, 1), Kblock_summary
+    elseif Miter > Mrem
+      Mblock_Mrem = Mbsize + Mᵣ
+      Mremfinal = Mbsize + Mblocks_rem
+      # @show Mbsize * (Miter - 1 - Mrem) + Mrem * Mblock_Mrem + Mremfinal
+      map(Int, (Mbsize, Mblock_Mrem, Mremfinal, Mrem, Miter)), Kblock_summary
+    else
+      _Mbsize, _Mrem, _Mremfinal, _Miter = split_m(M, Miter + (Mrem ≠ 0), Mᵣ)
+      _Mblock_Mrem = _Mbsize + Mᵣ
+      return map(Int, (_Mbsize, _Mblock_Mrem, _Mremfinal, _Mrem, _Miter)), Kblock_summary
+    end
+  else
+    Mbsize0 = Int(Mᵣ)
+    Mblock_Mrem0 = Int(Mᵣ)
+    Miter0, Mremfinal0 = divrem_fast(M, Mᵣ)
+    map(Int, (Mbsize0, Mblock_Mrem0, Mremfinal0, 0, Miter0)), Kblock_summary
+  end
 end
 
 @inline cldapproxi(n, d⁻¹) = Base.fptosi(Int, Base.FastMath.add_fast(Base.FastMath.mul_fast(n, d⁻¹), 0.9999999999999432)) # approximate `ceil`
+# @inline divapproxi(n, d⁻¹) = Base.fptosi(Int, Base.FastMath.mul_fast(n, d⁻¹)) # approximate `div`
 
 """
   find_first_acceptable(M, W)
