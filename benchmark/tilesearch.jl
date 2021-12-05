@@ -5,12 +5,14 @@ function matmul_pack_ab!(C, A, B, ::Val{W₁}, ::Val{W₂}, ::Val{R₁}, ::Val{R
   M, N = size(C); K = size(B,1)
   zc, za, zb = Octavian.zstridedpointer.((C,A,B))
   nspawn = VectorizationBase.num_cores()
+  threads, torelease = Octavian.PolyesterWeave.__request_threads((nspawn-1)%UInt32, Octavian.PolyesterWeave.worker_pointer(), nothing)
   t = Inf
   GC.@preserve C A B begin
     for _ ∈ 1:2
-      t = min(t, @elapsed(Octavian.matmul_pack_A_and_B!(zc, za, zb, Octavian.One(), Octavian.Zero(), M, K, N, Int(nspawn), F64(W₁), F64(W₂), F64(R₁), F64(R₂))))
+      t = min(t, @elapsed(Octavian.matmul_pack_A_and_B!(zc, za, zb, Octavian.One(), Octavian.Zero(), M, K, N, threads, F64(W₁), F64(W₂), F64(R₁), F64(R₂))))
     end
   end
+  Octavian.PolyesterWeave.free_threads!(torelease)
   return t
 end
 
