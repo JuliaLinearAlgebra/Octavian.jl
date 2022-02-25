@@ -40,6 +40,7 @@ include("init.jl") # `Octavian.__init__()` is defined in this file
 
 @static if VERSION >= v"1.8.0-beta1"
   let
+    __init__()
     A64 = rand(100,100)
     matmul(A64,A64)
     matmul(A64',A64)
