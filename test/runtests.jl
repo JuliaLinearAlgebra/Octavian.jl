@@ -18,6 +18,7 @@ include("test_suite_preamble.jl")
 @info("Octavian.OCTAVIAN_NUM_TASKS[] is $(Octavian.OCTAVIAN_NUM_TASKS[]) tasks")
 
 Random.seed!(123)
+Octavian.debug() = true
 
 include("block_sizes.jl")
 include("init.jl")

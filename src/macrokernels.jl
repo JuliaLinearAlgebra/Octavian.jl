@@ -132,8 +132,11 @@ function packaloopmul!(
     α, β, M, K, N
 ) where {T}
   Ãₚ, buffer = alloc_a_pack(K, Val(T))
+  Mᵣ, Nᵣ = matmul_params(Val(T))
+  if (debug() && (first_cache_size(Val(T)) < Mᵣ*pick_vector_width(T)*K*cld(M,Mᵣ*pick_vector_width(T))))
+    throw("First cache size too small: M: $M, K: $K, N: $N, first cache size: $(first_cache_size(Val(T)))")
+  end
   GC.@preserve buffer begin
-    Mᵣ, Nᵣ = matmul_params(Val(T))
     packamul!(C, Ãₚ, A, B, α, β, M, K, Nᵣ)
     ploopmul!(gesp(C, (Zero(), Nᵣ)), Ãₚ, gesp(B, (Zero(), Nᵣ)), α, β, M, K, N - Nᵣ)
   end
