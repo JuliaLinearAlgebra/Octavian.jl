@@ -12,19 +12,23 @@ function __init__()
     )
     @warn msg
   end
-  reseet_bcache_lock!()
+  reset_bcache_lock!()
 end
 
 function init_bcache()
   if bcache_count() ≢ Zero()
-    BCACHEPTR[] = VectorizationBase.valloc(second_cache_size() * bcache_count(), Cvoid, ccall(:jl_getpagesize, Int, ()))
+    if BCACHEPTR[] == C_NULL
+      BCACHEPTR[] = VectorizationBase.valloc(second_cache_size() * bcache_count(), Cvoid, ccall(:jl_getpagesize, Int, ()))
+    end
   end
   nothing
 end
 
-@static if Sys.WORD_SIZE ≤ 32
+@static if Sys.WORD_SIZE == 32
   function init_acache()
-    ACACHEPTR[] = VectorizationBase.valloc(first_cache_size() * init_num_tasks(), Cvoid, ccall(:jl_getpagesize, Int, ()))
+    if ACACHEPTR[] == C_NULL
+      ACACHEPTR[] = VectorizationBase.valloc(first_cache_size() * init_num_tasks(), Cvoid, ccall(:jl_getpagesize, Int, ()))
+    end
     nothing
   end
 else
@@ -32,11 +36,11 @@ else
 end
 
 function init_num_tasks()
-  num_tasks = _read_environment_num_tasks()::Int
+  num_tasks = _read_environment_num_tasks()
   OCTAVIAN_NUM_TASKS[] = num_tasks
 end
 
-function _read_environment_num_tasks()
+function _read_environment_num_tasks()::Int
   environment_variable = get(ENV, "OCTAVIAN_NUM_TASKS", "")::String
   nt = min(Threads.nthreads(), VectorizationBase.num_cores())::Int
   if isempty(environment_variable)

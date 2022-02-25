@@ -23,6 +23,8 @@ export matmul
 export matmul_serial!
 export matmul_serial
 
+debug() = false
+
 include("global_constants.jl")
 include("types.jl")
 include("integerdivision.jl")
@@ -35,5 +37,22 @@ include("matmul.jl")
 include("complex_matmul.jl")
 
 include("init.jl") # `Octavian.__init__()` is defined in this file
+
+@static if VERSION >= v"1.8.0-beta1"
+  let
+    __init__()
+    A64 = rand(100,100)
+    matmul(A64,A64)
+    matmul(A64',A64)
+    matmul(A64,A64')
+    matmul(A64',A64')
+    A32 = rand(Float32,100,100)
+    matmul(A32,A32)
+    matmul(A32',A32)
+    matmul(A32,A32')
+    matmul(A32',A32')
+  end
+end
+
 
 end # module Octavian

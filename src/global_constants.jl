@@ -16,10 +16,10 @@ MᵣW_mul_factor(::True) = StaticInt{4}()
 MᵣW_mul_factor(::False) = StaticInt{9}()
 MᵣW_mul_factor() = MᵣW_mul_factor(has_feature(Val(:x86_64_avx512f)))
 
-W₁Default(::True) = StaticFloat64{0.0007423708195588264}()
-W₂Default(::True) = StaticFloat64{0.7398765624419478}()
-R₁Default(::True) = StaticFloat64{0.4697043382682602}()
-R₂Default(::True) = StaticFloat64{0.6342912896800855}()
+W₁Default(::True) = StaticFloat64{0.0009898277594117685}()
+W₂Default(::True) = StaticFloat64{0.9865020832559304}()
+R₁Default(::True) = StaticFloat64{0.5820044063603483}()
+R₂Default(::True) = StaticFloat64{0.7580885846640107}()
 
 W₁Default_arch(::Val{:znver1}) = StaticFloat64{0.053918949422353986}()
 W₂Default_arch(::Val{:znver1}) = StaticFloat64{0.3013238122374886}()
@@ -73,7 +73,7 @@ bcache_count() = VectorizationBase.num_cache(second_cache())
 const BCACHEPTR = Ref{Ptr{Cvoid}}(C_NULL)
 const BCACHE_LOCK = Threads.Atomic{UInt}(zero(UInt))
 
-@static if Sys.WORD_SIZE ≤ 32
+@static if Sys.WORD_SIZE == 32
   const ACACHEPTR = Ref{Ptr{Cvoid}}(C_NULL)
 end
 

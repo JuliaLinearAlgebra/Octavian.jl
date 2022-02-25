@@ -24,7 +24,7 @@ function _use_bcache()
   end
   return BCache(nothing)
 end
-@inline _free_bcache!(b::BCache{Nothing}) = reseet_bcache_lock!()
+@inline _free_bcache!(::BCache{Nothing}) = reset_bcache_lock!()
 
 _use_bcache(::Nothing) = _use_bcache()
 function _use_bcache(i)
@@ -42,5 +42,5 @@ _free_bcache!(b::BCache{UInt}) = (Threads.atomic_xor!(BCACHE_LOCK, one(UInt) << 
 Currently not using try/finally in matmul routine, despite locking.
 So if it errors for some reason, you may need to manually call `reset_bcache_lock!()`.
 """
-@inline reseet_bcache_lock!() = (BCACHE_LOCK[] = zero(UInt); nothing)
+@inline reset_bcache_lock!() = (BCACHE_LOCK[] = zero(UInt); nothing)
 
