@@ -36,4 +36,12 @@ include("complex_matmul.jl")
 
 include("init.jl") # `Octavian.__init__()` is defined in this file
 
+@static if VERSION >= v"1.8.0-beta1"
+  let
+    matmul(rand(100,100),rand(100,100))
+    matmul(rand(Float32,100,100),rand(Float32,100,100))
+  end
+end
+
+
 end # module Octavian
