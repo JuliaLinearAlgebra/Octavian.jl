@@ -22,7 +22,7 @@ function init_bcache()
   nothing
 end
 
-@static if Sys.WORD_SIZE ≤ 32
+@static if Sys.WORD_SIZE == 32 || (Sys.iswindows() && VERSION >= v"1.8")
   function init_acache()
     ACACHEPTR[] = VectorizationBase.valloc(first_cache_size() * init_num_tasks(), Cvoid, ccall(:jl_getpagesize, Int, ()))
     nothing

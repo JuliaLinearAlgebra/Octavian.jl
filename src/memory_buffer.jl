@@ -2,7 +2,7 @@
 @inline function first_cache_buffer(::Val{T}) where {T}
   first_cache_buffer(Val{T}(), first_cache_size(Val(T)))
 end
-@static if Sys.WORD_SIZE == 32
+@static if Sys.WORD_SIZE == 32 || (Sys.iswindows() && VERSION >= v"1.8")
   @inline function first_cache_buffer(::Val{T}, N) where {T}
     reinterpret(Ptr{T}, ACACHEPTR[] + ((Threads.threadid()-1) * N) * static_sizeof(T))
   end
