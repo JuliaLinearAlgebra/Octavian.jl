@@ -18,6 +18,12 @@
 [ci-julia-nightly-img]: https://github.com/JuliaLinearAlgebra/Octavian.jl/workflows/CI%20(Julia%20nightly)/badge.svg "Continuous Integration (Julia nightly)"
 [codecov-img]:          https://codecov.io/gh/JuliaLinearAlgebra/Octavian.jl/branch/master/graph/badge.svg           "Code Coverage"
 
+### NOTE:
+CPUSummary 1.9 and newer stopped using Hwloc to support Julia running on WINE. Hwloc crashes Julia in this instance, making it difficult to work around.
+This also means that newer versions of CPUSummary.jl do not provide very good information to Octavian. Therefore, for best performance, it is recommended you checkout
+CPUSummary 1.9 and pin it.
+
+
 Octavian.jl
 is a multi-threaded BLAS-like library that provides pure Julia
 matrix multiplication on the CPU, built on top of
