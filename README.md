@@ -23,9 +23,7 @@ CPUSummary 1.9 and newer stopped using Hwloc to support Julia running on WINE. H
 This also means that newer versions of CPUSummary.jl do not provide very good information to Octavian. Therefore, for best performance, it is recommended you checkout
 CPUSummary 1.9 and pin it.
 
-
-Octavian.jl
-is a multi-threaded BLAS-like library that provides pure Julia
+Octavian.jl is a multi-threaded BLAS-like library that provides pure Julia
 matrix multiplication on the CPU, built on top of
 [LoopVectorization.jl](https://github.com/chriselrod/LoopVectorization.jl).
 
