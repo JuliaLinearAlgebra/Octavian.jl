@@ -10,6 +10,7 @@ function (::LoopMulFunc{P,TC,TA,TB,Α,Β,Md,Kd,Nd})(p::Ptr{UInt}) where {P,TC,TA
   offset, K = load(p, Kd, offset)
   offset, N = load(p, Nd, offset)
   _call_loopmul!(C, A, B, α, β, M, K, N, Val{P}())
+  _atomic_store!(p, SPIN)
   nothing
 end
 @inline _call_loopmul!(C, A, B, α, β, M, K, N, ::Val{false}) = loopmul!(C, A, B, α, β, M, K, N)
@@ -39,6 +40,7 @@ function (::SyncMulFunc{TC,TA,TB,Α,Β,Md,Kd,Nd,BCP,ID,TT,W₁,W₂,R₁,R₂})(
   offset, id = load(p, ID, offset)
   offset, total_ids = load(p, TT, offset)
   sync_mul!(C, A, B, α, β, M, K, N, atomicp, bcachep, id, total_ids, StaticFloat64{W₁}(), StaticFloat64{W₂}(), StaticFloat64{R₁}(), StaticFloat64{R₂}())
+  _atomic_store!(p, SPIN)
   nothing
 end
 
@@ -63,11 +65,17 @@ end
   nothing
 end
 
-@inline function setup_syncmul!(
+@inline function launch_thread_mul!(C, A, B, α, β, M, K, N, tid::UInt32, ::Val{P}) where {P}
+  launch(setup_matmul!, tid, C, A, B, α, β, M, K, N, Val{P}())
+end
+
+struct SyncMulLauncher{W₁, W₂, R₁, R₂} end
+@inline function (::SyncMulLauncher{W₁, W₂, R₁, R₂})(
   p::Ptr{UInt}, C::TC, A::TA, B::TB, α::Α, β::Β, M::Md, K::Kd, N::Nd,
-  ap::Ptr{UInt32},bcp::BCP,id::ID,tt::TT,::StaticFloat64{W₁},::StaticFloat64{W₂},::StaticFloat64{R₁},::StaticFloat64{R₂}
+  ap::Ptr{UInt32},bcp::BCP,id::ID,tt::TT
 ) where {TC,TA,TB,Α,Β,Md,Kd,Nd,BCP,ID,TT,W₁,W₂,R₁,R₂}
-  offset = store!(p, cfuncpointer(SyncMulFunc{TC,TA,TB,Α,Β,Md,Kd,Nd,BCP,ID,TT,W₁,W₂,R₁,R₂}()), sizeof(UInt))
+  fptr = cfuncpointer(SyncMulFunc{TC,TA,TB,Α,Β,Md,Kd,Nd,BCP,ID,TT,W₁,W₂,R₁,R₂}())
+  offset = store!(p, fptr, sizeof(UInt))
   offset = store!(p, C, offset)
   offset = store!(p, A, offset)
   offset = store!(p, B, offset)
@@ -82,20 +90,11 @@ end
   offset = store!(p, tt,  offset)
   nothing
 end
-
-@inline function launch_thread_mul!(C, A, B, α, β, M, K, N, tid::UInt32, ::Val{P}) where {P}
-  launch(setup_matmul!, tid, C, A, B, α, β, M, K, N, Val{P}())
-end
 @inline function launch_thread_mul!(
-  C, A, B, α, β, M, K, N, ap, bcp, tid, id, tt, ::StaticFloat64{W₁},::StaticFloat64{W₂},::StaticFloat64{R₁},::StaticFloat64{R₂}
+  C, A, B, α, β, M, K, N, ap, bcp, tid, id, tt,
+  ::StaticFloat64{W₁},::StaticFloat64{W₂},::StaticFloat64{R₁},::StaticFloat64{R₂}
 ) where {W₁,W₂,R₁,R₂}
-  launch(tid, C, A, B, α, β, M, K, N, ap, bcp, id, tt) do p, C, A, B, α, β, M, K, N, ap, bcp, id, tt
-    Base.@_inline_meta
-    setup_syncmul!(
-      p, C, A, B, α, β, M, K, N, ap, bcp, id, tt,
-      StaticFloat64{W₁}(),StaticFloat64{W₂}(),StaticFloat64{R₁}(),StaticFloat64{R₂}()
-    )
-  end
+  launch(SyncMulLauncher{W₁, W₂, R₁, R₂}(), tid, C, A, B, α, β, M, K, N, ap, bcp, id, tt)
 end
 
 
