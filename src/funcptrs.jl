@@ -10,6 +10,7 @@ function (::LoopMulFunc{P,TC,TA,TB,Α,Β,Md,Kd,Nd})(p::Ptr{UInt}) where {P,TC,TA
   offset, K = load(p, Kd, offset)
   offset, N = load(p, Nd, offset)
   _call_loopmul!(C, A, B, α, β, M, K, N, Val{P}())
+  _atomic_store!(p, SPIN)
   nothing
 end
 @inline _call_loopmul!(C, A, B, α, β, M, K, N, ::Val{false}) = loopmul!(C, A, B, α, β, M, K, N)
@@ -39,6 +40,7 @@ function (::SyncMulFunc{TC,TA,TB,Α,Β,Md,Kd,Nd,BCP,ID,TT,W₁,W₂,R₁,R₂})(
   offset, id = load(p, ID, offset)
   offset, total_ids = load(p, TT, offset)
   sync_mul!(C, A, B, α, β, M, K, N, atomicp, bcachep, id, total_ids, StaticFloat64{W₁}(), StaticFloat64{W₂}(), StaticFloat64{R₁}(), StaticFloat64{R₂}())
+  _atomic_store!(p, SPIN)
   nothing
 end
 

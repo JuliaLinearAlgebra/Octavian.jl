@@ -15,7 +15,7 @@ using Static: StaticInt, Zero, One, StaticBool, True, False, gt, eq, StaticFloat
     roundtostaticint, floortostaticint
 using ManualMemory: MemoryBuffer, load, store!
 
-using ThreadingUtilities: _atomic_add!, _atomic_load, _atomic_store!, launch, wait
+using ThreadingUtilities: _atomic_add!, _atomic_load, _atomic_store!, launch, wait, SPIN
 
 export StaticInt
 export matmul!
