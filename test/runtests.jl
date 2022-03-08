@@ -1,8 +1,13 @@
+import CPUSummary
+# Increasing the number of threads must be done before importing Octavian
+if Threads.nthreads() > 1 && Sys.CPU_THREADS > 1 && CPUSummary.num_cores() == 1
+    CPUSummary.num_cores() = CPUSummary.static(2)
+end
+
 import Octavian
 
 import Aqua
 import BenchmarkTools
-import CPUSummary
 import ForwardDiff
 import InteractiveUtils
 import LinearAlgebra
