@@ -5,6 +5,7 @@ version = "0.3.13"
 
 [deps]
 ArrayInterface = "4fba245c-0d91-5ea0-9b3e-6abc04ee57a9"
+CPUSummary = "2a0fbf3d-bb9c-48f3-b0a9-814d99fd7ab9"
 IfElse = "615f187c-cbe4-4ef1-ba3b-2fcf58d6d173"
 LoopVectorization = "bdcacae8-1622-11e9-2a5c-532679323890"
 ManualMemory = "d125e4d3-2237-4719-b19c-fa641b8a4667"
@@ -16,6 +17,7 @@ VectorizationBase = "3d5dd08c-fd9d-11e8-17fa-ed2836048c2f"
 
 [compat]
 ArrayInterface = "3.1.14, 5.0.1"
+CPUSummary = "0.1.1 - 0.1.8, 0.1.14"
 IfElse = "0.1"
 LoopVectorization = "0.12.86"
 ManualMemory = "0.1.1"
