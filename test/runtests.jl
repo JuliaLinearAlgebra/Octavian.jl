@@ -2,6 +2,7 @@ import Octavian
 
 import Aqua
 import BenchmarkTools
+import CPUSummary
 import ForwardDiff
 import InteractiveUtils
 import LinearAlgebra
