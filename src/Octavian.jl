@@ -5,8 +5,8 @@ using Requires: @require
 using VectorizationBase, ArrayInterface, LoopVectorization
 
 using VectorizationBase: align, AbstractStridedPointer, zstridedpointer, vsub_nsw, assume,
-    static_sizeof, StridedPointer, gesp, pause, pick_vector_width, has_feature,
-    cache_size, num_cores, cache_inclusive, cache_linesize
+  static_sizeof, StridedPointer, gesp, pause, pick_vector_width, has_feature
+using CPUSummary: cache_size, num_cores, cache_inclusive, cache_linesize
 using LoopVectorization: preserve_buffer, CloseOpen, UpperBoundedInteger
 using ArrayInterface: size, strides, offsets, indices, axes, StrideIndex
 using IfElse: ifelse
@@ -15,7 +15,7 @@ using Static: StaticInt, Zero, One, StaticBool, True, False, gt, eq, StaticFloat
     roundtostaticint, floortostaticint
 using ManualMemory: MemoryBuffer, load, store!
 
-using ThreadingUtilities: _atomic_add!, _atomic_load, _atomic_store!, launch, wait
+using ThreadingUtilities: _atomic_add!, _atomic_load, _atomic_store!, launch, wait, SPIN
 
 export StaticInt
 export matmul!

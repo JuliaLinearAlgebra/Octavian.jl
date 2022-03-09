@@ -47,10 +47,12 @@ R₁Default() = R₁Default(has_feature(Val(:x86_64_avx512f)))
 R₂Default() = R₂Default(has_feature(Val(:x86_64_avx512f)))
 
 
+@static if Sys.ARCH === :x86_64 || Sys.ARCH === :i686
+  first_cache() = StaticInt{2}()
+else
+  first_cache() = StaticInt{1}()
+end
 
-_first_cache(::StaticInt{1}) = StaticInt{1}()
-_first_cache(::StaticInt) = StaticInt{2}()
-first_cache() = _first_cache(VectorizationBase.num_l2cache())
 second_cache() = first_cache() + One()
 
 _first_cache_size(fcs::StaticInt) = ifelse(eq(first_cache(), StaticInt(2)) & cache_inclusive(StaticInt(2)), fcs - cache_size(One()), fcs)
