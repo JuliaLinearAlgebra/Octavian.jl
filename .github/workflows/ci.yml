@@ -31,6 +31,7 @@ jobs:
           - '3' # GitHub runners have 2 cores, so `NUM_CORES+1` is 3
         version:
           - '1' # automatically expands to the latest stable 1.x release of Julia
+          - 'nightly'
     steps:
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1
