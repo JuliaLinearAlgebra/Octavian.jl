@@ -115,6 +115,16 @@ end
   matmul_serial!(C, A, B, One(), Zero(), (M,K,N), ArrayInterface.contiguous_axis(C))
   return C
 end
+@inline function matmul_serial(A::AbstractMatrix, B::AbstractVecOrMat, α)
+  C, (M,K,N) = alloc_matmul_product(A, B)
+  matmul_serial!(C, A, B, α, Zero(), (M,K,N), ArrayInterface.contiguous_axis(C))
+  return C
+end
+@inline function matmul_serial(A::AbstractMatrix, B::AbstractVecOrMat, α, β)
+  C, (M,K,N) = alloc_matmul_product(A, B)
+  matmul_serial!(C, A, B, α, β, (M,K,N), ArrayInterface.contiguous_axis(C))
+  return C
+end
 
 
 # These methods must be compile time constant
@@ -165,7 +175,7 @@ Otherwise, based on the array's size, whether they are transposed, and whether t
 """
 @inline function _matmul_serial!(
   C::AbstractMatrix{T}, A::AbstractMatrix, B::AbstractMatrix, α, β, MKN
-) where {T}
+) where {T <: Base.HWReal}
   ((β ≢ Zero()) && iszero(β)) && return _matmul_serial!(C, A, B, α, Zero(), MKN)
   (β isa Bool) && return _matmul_serial!(C, A, B, α, One(), MKN)
   M, K, N = MKN === nothing ? matmul_sizes(C, A, B) : MKN
