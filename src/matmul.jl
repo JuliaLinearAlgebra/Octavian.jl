@@ -230,6 +230,8 @@ end
 @inline matmul(A::AbstractMatrix, B::AbstractVecOrMat) = matmul(A, B, One(), Zero())
 @inline matmul(A::AbstractMatrix, B::AbstractVecOrMat, α) = matmul(A, B, α, Zero())
 
+if sizeof(Int) >= 8
+
 """
     matmul!(C, A, B[, α, β, max_threads])
 
@@ -524,7 +526,10 @@ function sync_mul!(
   end
   nothing
 end
-
+else
+  matmul!(args::Vararg{Any,K}) where {K} = matmul_serial!(args...)
+end
+  
 function _matmul!(y::AbstractVector{T}, A::AbstractMatrix, x::AbstractVector, α, β, _, __) where {T}
   @tturbo for m ∈ indices((A,y),1)
     yₘ = zero(T)
