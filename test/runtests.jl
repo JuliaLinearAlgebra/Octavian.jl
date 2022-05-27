@@ -34,6 +34,8 @@ include("_matmul.jl")
 coverage || include("matmul_main.jl")
 include("matmul_coverage.jl")
 include("utils.jl")
-include("forward_diff.jl")
+if sizeof(Int) >= 8 || !Sys.iswindows()
+  include("forward_diff.jl")
+end
 
 include("aqua.jl") # run the Aqua.jl tests last

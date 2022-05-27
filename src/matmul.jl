@@ -375,9 +375,7 @@ function __matmul!(
   else
     clamp(div_fast(M * N, StaticInt{256}() * W), 0, _nthread-1)
   end
-  # nkern = cld_fast(M * N,  MᵣW * Nᵣ)
   threads, torelease = PolyesterWeave.__request_threads(_nrequest % UInt32, PolyesterWeave.worker_pointer(), nothing)
-  # _threads, _torelease = PolyesterWeave.request_threads(Threads.threadid()%UInt32, _nrequest)
 
   nrequest = threads.i
   iszero(nrequest) && @goto SINGLETHREAD
@@ -411,9 +409,6 @@ end
 
 # If tasks is [0,1,2,3] (e.g., `CloseOpen(0,4)`), it will wait on `MULTASKS[i]` for `i = [1,2,3]`.
 function waitonmultasks(threads, nthread)
-  # for (_,tid) ∈ threads
-  #   wait(tid)
-  # end
   (tnum, tuu) = PolyesterWeave.initial_state(threads)
   for _ ∈ CloseOpen(One(), nthread)
     (tnum, tuu) = PolyesterWeave.iter(tnum, tuu)
