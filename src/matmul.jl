@@ -115,6 +115,16 @@ end
   matmul_serial!(C, A, B, One(), Zero(), (M,K,N), ArrayInterface.contiguous_axis(C))
   return C
 end
+@inline function matmul_serial(A::AbstractMatrix, B::AbstractVecOrMat, α)
+  C, (M,K,N) = alloc_matmul_product(A, B)
+  matmul_serial!(C, A, B, α, Zero(), (M,K,N), ArrayInterface.contiguous_axis(C))
+  return C
+end
+@inline function matmul_serial(A::AbstractMatrix, B::AbstractVecOrMat, α, β)
+  C, (M,K,N) = alloc_matmul_product(A, B)
+  matmul_serial!(C, A, B, α, β, (M,K,N), ArrayInterface.contiguous_axis(C))
+  return C
+end
 
 
 # These methods must be compile time constant
@@ -165,7 +175,7 @@ Otherwise, based on the array's size, whether they are transposed, and whether t
 """
 @inline function _matmul_serial!(
   C::AbstractMatrix{T}, A::AbstractMatrix, B::AbstractMatrix, α, β, MKN
-) where {T}
+) where {T <: Base.HWReal}
   ((β ≢ Zero()) && iszero(β)) && return _matmul_serial!(C, A, B, α, Zero(), MKN)
   (β isa Bool) && return _matmul_serial!(C, A, B, α, One(), MKN)
   M, K, N = MKN === nothing ? matmul_sizes(C, A, B) : MKN
@@ -216,7 +226,7 @@ function matmul_st_pack_dispatcher!(pC::AbstractStridedPointer{T}, pA, pB, α, �
     nothing
 end
 
-
+if sizeof(Int) >= 8
 """
     matmul(A, B)
 
@@ -365,9 +375,7 @@ function __matmul!(
   else
     clamp(div_fast(M * N, StaticInt{256}() * W), 0, _nthread-1)
   end
-  # nkern = cld_fast(M * N,  MᵣW * Nᵣ)
   threads, torelease = PolyesterWeave.__request_threads(_nrequest % UInt32, PolyesterWeave.worker_pointer(), nothing)
-  # _threads, _torelease = PolyesterWeave.request_threads(Threads.threadid()%UInt32, _nrequest)
 
   nrequest = threads.i
   iszero(nrequest) && @goto SINGLETHREAD
@@ -401,9 +409,6 @@ end
 
 # If tasks is [0,1,2,3] (e.g., `CloseOpen(0,4)`), it will wait on `MULTASKS[i]` for `i = [1,2,3]`.
 function waitonmultasks(threads, nthread)
-  # for (_,tid) ∈ threads
-  #   wait(tid)
-  # end
   (tnum, tuu) = PolyesterWeave.initial_state(threads)
   for _ ∈ CloseOpen(One(), nthread)
     (tnum, tuu) = PolyesterWeave.iter(tnum, tuu)
@@ -524,7 +529,11 @@ function sync_mul!(
   end
   nothing
 end
-
+else
+  @inline matmul(args::Vararg{Any,K}) where {K} = matmul_serial(args...)
+  @inline matmul!(args::Vararg{Any,K}) where {K} = matmul_serial!(args...)
+end
+  
 function _matmul!(y::AbstractVector{T}, A::AbstractMatrix, x::AbstractVector, α, β, _, __) where {T}
   @tturbo for m ∈ indices((A,y),1)
     yₘ = zero(T)
