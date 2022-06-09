@@ -203,13 +203,13 @@ Otherwise, based on the array's size, whether they are transposed, and whether t
 end # function
 
 function matmul_only_β!(C::AbstractMatrix{T}, β::StaticInt{0}) where T
-    @turbo for i=1:length(C)
+    @turbo for i=eachindex(C)
         C[i] = zero(T)
     end
 end
 
 function matmul_only_β!(C::AbstractMatrix{T}, β) where T
-    @turbo for i=1:length(C)
+    @turbo for i=eachindex(C)
         C[i] = β * C[i]
     end
 end
