@@ -25,6 +25,34 @@ for AT in [:AbstractVector, :AbstractMatrix]  # to avoid ambiguity error
             _C
         end
 
+        function _matmul_v2!(_C::$AT{Complex{T}}, _A::AbstractMatrix{Complex{U}}, _B::$AT{Complex{V}}, 
+                            α=One(), β=Zero(), nthread::Nothing=nothing, MKN=nothing, contig_axis=nothing) where {T,U,V}
+            # C, A, B = map(real_rep, (_C, _A, _B))
+            C = reinterpret(T, _C)
+            A = reinterpret(T, _A)
+            B = reinterpret(reshape, T, _B)
+
+            η = ifelse(ArrayInterface.is_lazy_conjugate(_A), StaticInt(-1), StaticInt(1))
+            θ = ifelse(ArrayInterface.is_lazy_conjugate(_B), StaticInt(-1), StaticInt(1))
+            (+ᶻ, -ᶻ) = ifelse(ArrayInterface.is_lazy_conjugate(_C), (-, +), (+, -))
+            ηθ = η*θ
+
+            @tturbo for n ∈ indices((C, B), (2,3)), m ∈ indices((C, A), 1)
+                Cmn = zero(T)
+                for k ∈ indices((A, B), (2, 2))
+                    Amk = A[m,k]
+                    Aperm = vpermilps177(Amk)
+                    Cmn = vfmaddsub(Amk, B[1,k,n], vfmaddsub(Aperm, B[2,k,n], Cmn))
+                    # Cmn_re +=     A[1, m, k] * B[1, k, n] - ηθ * A[2, m, k] * B[2, k, n]
+                    # Cmn_im += θ * A[1, m, k] * B[2, k, n] +  η * A[2, m, k] * B[1, k, n]
+                end
+                # C[1,m,n] = (real(α) * Cmn_re -ᶻ imag(α) * Cmn_im) + (real(β) * C[1,m,n] -ᶻ imag(β) * C[2,m,n])
+                # C[2,m,n] = (imag(α) * Cmn_re +ᶻ real(α) * Cmn_im) + (imag(β) * C[1,m,n] +ᶻ real(β) * C[2,m,n])
+                C[m, n] = Cmn
+                end
+                _C
+            end
+
         @inline function _matmul!(_C::$AT{Complex{T}}, A::AbstractMatrix{U}, _B::$AT{Complex{V}},
                                 α=One(), β=Zero(), nthread::Nothing=nothing, MKN=nothing, contig_axis=nothing) where {T,U,V}
             C, B = map(real_rep, (_C, _B))
