@@ -15,7 +15,7 @@ function (::LoopMulFunc{P,TC,TA,TB,Α,Β,Md,Kd,Nd})(p::Ptr{UInt}) where {P,TC,TA
 end
 @inline _call_loopmul!(C, A, B, α, β, M, K, N, ::Val{false}) = loopmul!(C, A, B, α, β, M, K, N)
 @inline function _call_loopmul!(C::StridedPointer{T}, A, B, α, β, M, K, N, ::Val{true}) where {T}
-  if M*K < first_cache_size(Val(T)) * R₂Default()
+  if M*K < ceil(Int,Float64(first_cache_size(Val(T)) * R₂Default()))
     packaloopmul!(C, A, B, α, β, M, K, N)
     return
   else
