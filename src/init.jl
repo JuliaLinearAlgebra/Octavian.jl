@@ -24,15 +24,11 @@ function init_bcache()
   nothing
 end
 
-@static if Sys.WORD_SIZE == 32
-  function init_acache()
-    if ACACHEPTR[] == C_NULL
-      ACACHEPTR[] = VectorizationBase.valloc(first_cache_size() * init_num_tasks(), Cvoid, ccall(:jl_getpagesize, Int, ()))
-    end
-    nothing
+function init_acache()
+  if ACACHEPTR[] == C_NULL
+    ACACHEPTR[] = VectorizationBase.valloc(first_cache_size() * init_num_tasks(), Cvoid, ccall(:jl_getpagesize, Int, ()))
   end
-else
-  init_acache() = nothing
+  nothing
 end
 
 function init_num_tasks()

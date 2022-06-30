@@ -17,6 +17,10 @@ using ManualMemory: MemoryBuffer, load, store!
 
 using ThreadingUtilities: _atomic_add!, _atomic_load, _atomic_store!, launch, wait, SPIN
 
+if !(StaticInt <: Base.Integer)
+const Integer = Union{Base.Integer, StaticInt}
+end
+
 export StaticInt
 export matmul!
 export matmul

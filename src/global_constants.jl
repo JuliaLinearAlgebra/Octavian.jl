@@ -75,7 +75,5 @@ bcache_count() = VectorizationBase.num_cache(second_cache())
 const BCACHEPTR = Ref{Ptr{Cvoid}}(C_NULL)
 const BCACHE_LOCK = Threads.Atomic{UInt}(zero(UInt))
 
-@static if Sys.WORD_SIZE == 32
-  const ACACHEPTR = Ref{Ptr{Cvoid}}(C_NULL)
-end
+const ACACHEPTR = Ref{Ptr{Cvoid}}(C_NULL)
 
