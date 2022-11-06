@@ -2,22 +2,25 @@
 matmul_params(::Val{T}) where {T} = LoopVectorization.matmul_params()
 
 function block_sizes(::Val{T}, _α, _β, R₁, R₂) where {T}
-    W = pick_vector_width(T)
-    α = _α * W
-    β = _β * W
-    L₁ₑ = first_cache_size(Val(T)) * R₁
-    L₂ₑ = second_cache_size(Val(T)) * R₂
-    block_sizes(Val(T), W, α, β, L₁ₑ, L₂ₑ)
+  W = pick_vector_width(T)
+  Wfloat = StaticFloat64(W)
+  α = _α * Wfloat
+  β = _β * Wfloat
+  L₁ₑ = StaticFloat64(first_cache_size(Val(T))) * R₁
+  L₂ₑ = StaticFloat64(second_cache_size(Val(T))) * R₂
+  block_sizes(Val(T), W, α, β, L₁ₑ, L₂ₑ)
 end
 function block_sizes(::Val{T}, W, α, β, L₁ₑ, L₂ₑ) where {T}
-    mᵣ, nᵣ = matmul_params(Val(T))
-    MᵣW = mᵣ * W
+  mᵣnᵣ = matmul_params(Val(T))
+  mᵣ = getfield(mᵣnᵣ, 1)
+  nᵣ = getfield(mᵣnᵣ, 2)
+  MᵣW = mᵣ * W
     
-    Mc = floortostaticint(√(L₁ₑ)*√(L₁ₑ*β + L₂ₑ*α)/√(L₂ₑ) / MᵣW) * MᵣW
-    Kc = roundtostaticint(√(L₁ₑ)*√(L₂ₑ)/√(L₁ₑ*β + L₂ₑ*α))
-    Nc = floortostaticint(√(L₂ₑ)*√(L₁ₑ*β + L₂ₑ*α)/√(L₁ₑ) / nᵣ) * nᵣ
-
-    Mc, Kc, Nc
+  Mc = floortostaticint(√(L₁ₑ)*√(L₁ₑ*β + L₂ₑ*α)/√(L₂ₑ) / StaticFloat64(MᵣW)) * MᵣW
+  Kc = roundtostaticint(√(L₁ₑ)*√(L₂ₑ)/√(L₁ₑ*β + L₂ₑ*α))
+  Nc = floortostaticint(√(L₂ₑ)*√(L₁ₑ*β + L₂ₑ*α)/√(L₁ₑ) / StaticFloat64(nᵣ)) * nᵣ
+  
+  Mc, Kc, Nc
 end
 function block_sizes(::Val{T}) where {T}
     block_sizes(Val(T), W₁Default(), W₂Default(), R₁Default(), R₂Default())
@@ -179,8 +182,9 @@ end
 # Takes Nc, calcs Mc and Kc
 @inline function solve_McKc(::Val{T}, M, K, Nc, _α, _β, R₂, R₃, Wfactor) where {T}
   W = pick_vector_width(T)
-  α = _α * W
-  β = _β * W
+  Wfloat = StaticFloat64(W)
+  α = _α * Wfloat
+  β = _β * Wfloat
   L₁ₑ =  first_cache_size(Val(T)) * R₂
   L₂ₑ = second_cache_size(Val(T)) * R₃
 
