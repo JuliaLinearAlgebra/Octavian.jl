@@ -19,7 +19,6 @@ jobs:
       matrix:
         arch:
           - x64
-          - x86
         os:
           - ubuntu-latest
           - windows-latest
@@ -29,9 +28,6 @@ jobs:
           - '3' # GitHub runners have 2 cores, so `NUM_CORES+1` is 3
         version:
           - 'nightly'
-        exclude:
-          - os: macOS-latest
-            arch: x86 # 32-bit Julia binaries are not available on macOS
     steps:
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1

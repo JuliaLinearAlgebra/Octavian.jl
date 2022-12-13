@@ -34,6 +34,8 @@ matrix multiplication on the CPU, built on top of
 Please see the
 [Octavian documentation](https://octavian.JuliaLinearAlgebra.org/stable).
 
+Octavian dropped 32bit Julia support. See [PR#157](https://github.com/JuliaLinearAlgebra/Octavian.jl/pull/157). If you're interested in restoring it, please file a PR to fix failing tests.
+
 ## Benchmarks
 
 You can run benchmarks using [BLASBenchmarksCPU.jl](https://github.com/JuliaLinearAlgebra/BLASBenchmarksCPU.jl):

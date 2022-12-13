@@ -64,7 +64,7 @@ _second_cache_size(scs::StaticInt, ::False) = scs
 _second_cache_size(::StaticInt{0}, ::Nothing) = StaticInt(3145728)
 function second_cache_size()
     sc = second_cache()
-    _second_cache_size(cache_size(sc), cache_inclusive(sc))
+    _second_cache_size(cache_size(sc), cache_inclusive(sc)) * min(num_cores(), num_threads())
 end
 
 first_cache_size(::Val{T}) where {T} = first_cache_size() ÷ static_sizeof(T)

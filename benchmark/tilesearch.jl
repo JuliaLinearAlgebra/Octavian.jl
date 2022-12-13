@@ -66,8 +66,8 @@ end
 
 
 T = Float64
-min_size = round(Int, sqrt(0.65 * Octavian.VectorizationBase.cache_size(Val(3)) / sizeof(T)))
-max_size = round(Int, sqrt( 32  * Octavian.VectorizationBase.cache_size(Val(3)) / sizeof(T)))
+min_size = round(Int, sqrt((0.65/4) * Octavian.num_cores() * Octavian.VectorizationBase.cache_size(Val(3)) / sizeof(T)))
+max_size = round(Int, sqrt( (32/4)  * Octavian.num_cores() * Octavian.VectorizationBase.cache_size(Val(3)) / sizeof(T)))
 
 SR = size_range(max_size, min_size, 400);
 const CsConst, AsConst, BsConst = matrix_range(SR, T);
@@ -111,7 +111,7 @@ const CsConst, AsConst, BsConst = matrix_range(SR, T);
 
 
 function matmul_objective(params)
-    print("Params: ", params, "; ")
+    print("Params= ", params, "; ")
     W₁, W₂, R₁, R₂ = params
     gflop = bench_size(CsConst, AsConst, BsConst, Val{W₁}(), Val{W₂}(), Val{R₁}(), Val{R₂}())
     println(gflop)
@@ -125,12 +125,12 @@ lower = 0.75 .* init;
 upper = [0.9, 1.25init[2], 0.999, 0.999];
 # init = [0.001, 0.9754033943603924, 0.5711159869399494, 0.7547361860432168];
 
-#=
+
 opt = Optim.optimize(
     matmul_objective, init, ParticleSwarm(lower = lower, upper = upper),
-    Optim.Options(iterations = 10^6, time_limit = 8hours)
+    Optim.Options(iterations = 10^6, time_limit = 14*hours)
 );
-=#
+
 
 
 
