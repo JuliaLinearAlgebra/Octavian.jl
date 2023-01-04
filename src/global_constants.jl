@@ -3,12 +3,12 @@ const OCTAVIAN_NUM_TASKS = Ref(1)
 _nthreads() = OCTAVIAN_NUM_TASKS[]
 
 @generated function calc_factors(::Union{Val{nc},StaticInt{nc}} = num_cores()) where {nc}
-    t = Expr(:tuple)
-    for i ∈ nc:-1:1
-        d, r = divrem(nc, i)
-        iszero(r) && push!(t.args, (i, d))
-    end
-    t
+  t = Expr(:tuple)
+  for i ∈ nc:-1:1
+    d, r = divrem(nc, i)
+    iszero(r) && push!(t.args, (i, d))
+  end
+  t
 end
 # const CORE_FACTORS = calc_factors()
 
@@ -55,7 +55,11 @@ end
 
 second_cache() = first_cache() + One()
 
-_first_cache_size(fcs::StaticInt) = ifelse(eq(first_cache(), StaticInt(2)) & cache_inclusive(StaticInt(2)), fcs - cache_size(One()), fcs)
+_first_cache_size(fcs::StaticInt) = ifelse(
+  eq(first_cache(), StaticInt(2)) & cache_inclusive(StaticInt(2)),
+  fcs - cache_size(One()),
+  fcs,
+)
 _first_cache_size(::Nothing) = StaticInt(262144)
 first_cache_size() = _first_cache_size(cache_size(first_cache()))
 
@@ -63,8 +67,8 @@ _second_cache_size(scs::StaticInt, ::True) = scs - cache_size(first_cache())
 _second_cache_size(scs::StaticInt, ::False) = scs
 _second_cache_size(::StaticInt{0}, ::Nothing) = StaticInt(3145728)
 function second_cache_size()
-    sc = second_cache()
-    _second_cache_size(cache_size(sc), cache_inclusive(sc)) * min(num_cores(), num_threads())
+  sc = second_cache()
+  _second_cache_size(cache_size(sc), cache_inclusive(sc))
 end
 
 first_cache_size(::Val{T}) where {T} = first_cache_size() ÷ static_sizeof(T)
