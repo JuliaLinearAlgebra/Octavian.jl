@@ -11,19 +11,17 @@ function block_sizes(::Val{T}, _α, _β, R₁, R₂) where {T}
   block_sizes(Val(T), W, α, β, L₁ₑ, L₂ₑ)
 end
 function block_sizes(::Val{T}, W, α, β, L₁ₑ, L₂ₑ) where {T}
-  mᵣnᵣ = matmul_params(Val(T))
-  mᵣ = getfield(mᵣnᵣ, 1)
-  nᵣ = getfield(mᵣnᵣ, 2)
+  mᵣ, nᵣ = matmul_params(Val(T))
   MᵣW = mᵣ * W
-    
-  Mc = floortostaticint(√(L₁ₑ)*√(L₁ₑ*β + L₂ₑ*α)/√(L₂ₑ) / StaticFloat64(MᵣW)) * MᵣW
-  Kc = roundtostaticint(√(L₁ₑ)*√(L₂ₑ)/√(L₁ₑ*β + L₂ₑ*α))
-  Nc = floortostaticint(√(L₂ₑ)*√(L₁ₑ*β + L₂ₑ*α)/√(L₁ₑ) / StaticFloat64(nᵣ)) * nᵣ
-  
+
+  Mc = floortostaticint(√(L₁ₑ) * √(L₁ₑ * β + L₂ₑ * α) / √(L₂ₑ) / StaticFloat64(MᵣW)) * MᵣW
+  Kc = roundtostaticint(√(L₁ₑ) * √(L₂ₑ) / √(L₁ₑ * β + L₂ₑ * α))
+  Nc = floortostaticint(√(L₂ₑ) * √(L₁ₑ * β + L₂ₑ * α) / √(L₁ₑ) / StaticFloat64(nᵣ)) * nᵣ
+
   Mc, Kc, Nc
 end
 function block_sizes(::Val{T}) where {T}
-    block_sizes(Val(T), W₁Default(), W₂Default(), R₁Default(), R₂Default())
+  block_sizes(Val(T), W₁Default(), W₂Default(), R₁Default(), R₂Default())
 end
 
 """
@@ -48,12 +46,12 @@ This is meant to specify roughly the requested amount of blocks, and return rela
 This method is used fairly generally.
 """
 @inline function split_m(M, _Mblocks, W)
-    Miters = cld_fast(M, W)
-    Mblocks = min(_Mblocks, Miters)
-    Miter_per_block, Mrem = divrem_fast(Miters, Mblocks)
-    Mbsize = Miter_per_block * W
-    Mremfinal = M - Mbsize*(Mblocks-1) - Mrem * W
-    Mbsize, Mrem, Mremfinal, Mblocks
+  Miters = cld_fast(M, W)
+  Mblocks = min(_Mblocks, Miters)
+  Miter_per_block, Mrem = divrem_fast(Miters, Mblocks)
+  Mbsize = Miter_per_block * W
+  Mremfinal = M - Mbsize * (Mblocks - 1) - Mrem * W
+  Mbsize, Mrem, Mremfinal, Mblocks
 end
 
 """
@@ -162,33 +160,36 @@ Note that for synchronization on `B`, all threads must have the same values for 
 independently of `M`, this algorithm guarantees all threads are on the same page.
 """
 @inline function solve_block_sizes(::Val{T}, M, K, N, _α, _β, R₂, R₃, Wfactor) where {T}
-    W = pick_vector_width(T)
-    α = _α * W
-    β = _β * W
-    L₁ₑ =  first_cache_size(Val(T)) * R₂
-    L₂ₑ = second_cache_size(Val(T)) * R₃
+  W = pick_vector_width(T)
+  α = _α * W
+  β = _β * W
+  L₁ₑ = first_cache_size(Val(T)) * R₂
+  L₂ₑ = second_cache_size(Val(T)) * R₃
 
-    # Nc_init = round(Int, √(L₂ₑ)*√(α * L₂ₑ + β * L₁ₑ)/√(L₁ₑ))
-    Nc_init⁻¹ = √(L₁ₑ) / (√(L₂ₑ)*√(α * L₂ₑ + β * L₁ₑ))
-    
-    Niter = cldapproxi(N, Nc_init⁻¹) # approximate `ceil`
-    Nblock, Nrem = divrem_fast(N, Niter)
-    Nblock_Nrem = Nblock + One()#(Nrem > 0)
+  # Nc_init = round(Int, √(L₂ₑ)*√(α * L₂ₑ + β * L₁ₑ)/√(L₁ₑ))
+  Nc_init⁻¹ = √(L₁ₑ) / (√(L₂ₑ) * √(α * L₂ₑ + β * L₁ₑ))
 
-    ((Mblock, Mblock_Mrem, Mremfinal, Mrem, Miter), (Kblock, Kblock_Krem, Krem, Kiter)) = solve_McKc(Val(T), M, K, Nblock_Nrem, _α, _β, R₂, R₃, Wfactor)
-    
-    (Mblock, Mblock_Mrem, Mremfinal, Mrem, Miter), (Kblock, Kblock_Krem, Krem, Kiter), promote(Nblock, Nblock_Nrem, Nrem, Niter)
+  Niter = cldapproxi(N, Nc_init⁻¹) # approximate `ceil`
+  Nblock, Nrem = divrem_fast(N, Niter)
+  Nblock_Nrem = Nblock + One()#(Nrem > 0)
+
+  ((Mblock, Mblock_Mrem, Mremfinal, Mrem, Miter), (Kblock, Kblock_Krem, Krem, Kiter)) =
+    solve_McKc(Val(T), M, K, Nblock_Nrem, _α, _β, R₂, R₃, Wfactor)
+
+  (Mblock, Mblock_Mrem, Mremfinal, Mrem, Miter),
+  (Kblock, Kblock_Krem, Krem, Kiter),
+  promote(Nblock, Nblock_Nrem, Nrem, Niter)
 end
 # Takes Nc, calcs Mc and Kc
 @inline function solve_McKc(::Val{T}, M, K, Nc, _α, _β, R₂, R₃, Wfactor) where {T}
   W = pick_vector_width(T)
   Wfloat = StaticFloat64(W)
   α = _α * Wfloat
-  β = _β * Wfloat
-  L₁ₑ =  first_cache_size(Val(T)) * R₂
+  # β = _β * Wfloat
+  L₁ₑ = first_cache_size(Val(T)) * R₂
   L₂ₑ = second_cache_size(Val(T)) * R₃
 
-  Kc_init⁻¹ = Base.FastMath.max_fast(√(α/L₁ₑ), Nc*inv(L₂ₑ))
+  Kc_init⁻¹ = Base.FastMath.max_fast(√(α / L₁ₑ), Nc * inv(L₂ₑ))
   Kiter = cldapproxi(K, Kc_init⁻¹) # approximate `ceil`
   Kblock, Krem = divrem_fast(K, Kiter)
   Kblock_Krem = Kblock + One()
@@ -202,7 +203,7 @@ end
     Mblocks, Mblocks_rem = divrem_fast(M, Mᵣ)
     Miter, Mrem = divrem_fast(Mblocks, Mc_init_base)
     if Miter == 0
-       return (0, 0, Int(M)::Int, 0, 1), Kblock_summary
+      return (0, 0, Int(M)::Int, 0, 1), Kblock_summary
     elseif Miter > Mrem
       Mblock_Mrem = Mbsize + Mᵣ
       Mremfinal = Mbsize + Mblocks_rem
@@ -221,7 +222,10 @@ end
   end
 end
 
-@inline cldapproxi(n, d⁻¹) = Base.fptosi(Int, Base.FastMath.add_fast(Base.FastMath.mul_fast(n, d⁻¹), 0.9999999999999432)) # approximate `ceil`
+@inline cldapproxi(n, d⁻¹) = Base.fptosi(
+  Int,
+  Base.FastMath.add_fast(Base.FastMath.mul_fast(n, d⁻¹), 0.9999999999999432),
+) # approximate `ceil`
 # @inline divapproxi(n, d⁻¹) = Base.fptosi(Int, Base.FastMath.mul_fast(n, d⁻¹)) # approximate `div`
 
 """
@@ -231,14 +235,14 @@ Finds first combination of `Miter` and `Niter` that doesn't make `M` too small w
 This would be awkard if there are computers with prime numbers of cores. I should probably consider that possibility at some point.
 """
 @inline function find_first_acceptable(::Val{T}, M, W) where {T}
-    Mᵣ, Nᵣ = matmul_params(Val(T))
-    factors = calc_factors()
-    for (miter, niter) ∈ factors
-        if miter * (StaticInt(2) * Mᵣ * W) ≤ M + (W + W)
-            return miter, niter
-        end
+  Mᵣ, _ = matmul_params(Val(T))
+  factors = calc_factors()
+  for (miter, niter) ∈ factors
+    if miter * (StaticInt(2) * Mᵣ * W) ≤ M + (W + W)
+      return miter, niter
     end
-    last(factors)
+  end
+  last(factors)
 end
 """
   divide_blocks(M, Ntotal, _nspawn, W)
@@ -247,8 +251,8 @@ Splits both `M` and `N` into blocks when trying to spawn a large number of threa
 """
 @inline function divide_blocks(::Val{T}, M, Ntotal, _nspawn, W) where {T}
   _nspawn == num_cores() && return find_first_acceptable(Val(T), M, W)
-  mᵣ, nᵣ = matmul_params(Val(T))
-  Miter = clamp(div_fast(M, W*mᵣ * MᵣW_mul_factor()), 1, _nspawn)
+  mᵣ, _ = matmul_params(Val(T))
+  Miter = clamp(div_fast(M, W * mᵣ * MᵣW_mul_factor()), 1, _nspawn)
   nspawn = div_fast(_nspawn, Miter)
   if (nspawn ≤ 1) & (Miter < _nspawn)
     # rebalance Miter
