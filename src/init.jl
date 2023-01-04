@@ -18,7 +18,11 @@ end
 function init_bcache()
   if bcache_count() ≢ Zero()
     if BCACHEPTR[] == C_NULL
-      BCACHEPTR[] = VectorizationBase.valloc(second_cache_size() * bcache_count(), Cvoid, ccall(:jl_getpagesize, Int, ()))
+      BCACHEPTR[] = VectorizationBase.valloc(
+        Threads.nthreads() * second_cache_size() * bcache_count(),
+        Cvoid,
+        ccall(:jl_getpagesize, Int, ()),
+      )
     end
   end
   nothing
@@ -26,7 +30,11 @@ end
 
 function init_acache()
   if ACACHEPTR[] == C_NULL
-    ACACHEPTR[] = VectorizationBase.valloc(first_cache_size() * init_num_tasks(), Cvoid, ccall(:jl_getpagesize, Int, ()))
+    ACACHEPTR[] = VectorizationBase.valloc(
+      first_cache_size() * init_num_tasks(),
+      Cvoid,
+      ccall(:jl_getpagesize, Int, ()),
+    )
   end
   nothing
 end

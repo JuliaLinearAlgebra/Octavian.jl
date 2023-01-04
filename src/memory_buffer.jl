@@ -3,14 +3,15 @@
   first_cache_buffer(Val{T}(), first_cache_size(Val(T)))
 end
 @inline function first_cache_buffer(::Val{T}, N) where {T}
-  reinterpret(Ptr{T}, ACACHEPTR[] + ((Threads.threadid()-1) * N) * static_sizeof(T))
+  reinterpret(Ptr{T}, ACACHEPTR[] + ((Threads.threadid() - 1) * N) * static_sizeof(T))
 end
 
-BCache(i::Integer) = BCache(BCACHEPTR[]+cld_fast(second_cache_size()*i, Threads.nthreads()), i % UInt)
+BCache(i::Integer) = BCache(BCACHEPTR[] + second_cache_size() * i, i % UInt)
 BCache(::Nothing) = BCache(BCACHEPTR[], nothing)
 
 @inline Base.pointer(b::BCache) = b.p
-@inline Base.unsafe_convert(::Type{Ptr{T}}, b::BCache) where {T} = Base.unsafe_convert(Ptr{T}, b.p)
+@inline Base.unsafe_convert(::Type{Ptr{T}}, b::BCache) where {T} =
+  Base.unsafe_convert(Ptr{T}, b.p)
 
 function _use_bcache()
   while Threads.atomic_cas!(BCACHE_LOCK, zero(UInt), typemax(UInt)) != zero(UInt)
@@ -28,7 +29,8 @@ function _use_bcache(i)
   end
   BCache(i)
 end
-_free_bcache!(b::BCache{UInt}) = (Threads.atomic_xor!(BCACHE_LOCK, one(UInt) << b.i); nothing)
+_free_bcache!(b::BCache{UInt}) =
+  (Threads.atomic_xor!(BCACHE_LOCK, one(UInt) << b.i); nothing)
 
 """
   reset_bcache_lock!()
