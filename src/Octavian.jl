@@ -37,6 +37,8 @@ using ManualMemory: MemoryBuffer, load, store!
 
 using ThreadingUtilities: _atomic_add!, _atomic_load, _atomic_store!, launch, wait, SPIN
 
+using SnoopPrecompile: @precompile_setup, @precompile_all_calls
+
 if !(StaticInt <: Base.Integer)
   const Integer = Union{Base.Integer,StaticInt}
 end
@@ -63,18 +65,26 @@ include("complex_matmul.jl")
 include("init.jl") # `Octavian.__init__()` is defined in this file
 
 @static if VERSION >= v"1.8.0-beta1"
-  let
+  @precompile_setup begin
+    # Putting some things in `setup` can reduce the size of the
+    # precompile file and potentially make loading faster.
     __init__()
     A64 = rand(100, 100)
-    matmul(A64, A64)
-    matmul(A64', A64)
-    matmul(A64, A64')
-    matmul(A64', A64')
     A32 = rand(Float32, 100, 100)
-    matmul(A32, A32)
-    matmul(A32', A32)
-    matmul(A32, A32')
-    matmul(A32', A32')
+
+    @precompile_all_calls begin
+      # All calls in this block will be precompiled, regardless of whether
+      # they belong to Octavian.jl or not (on Julia 1.8 and higher).
+      matmul(A64, A64)
+      matmul(A64', A64)
+      matmul(A64, A64')
+      matmul(A64', A64')
+
+      matmul(A32, A32)
+      matmul(A32', A32)
+      matmul(A32, A32')
+      matmul(A32', A32')
+    end
   end
 end
 
