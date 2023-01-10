@@ -37,7 +37,6 @@ function test_complex(
           Areb = Are * b
           Abre = A * bre
 
-          @info "" T n k m
           @test (Octavian.matmul(A, B)) ≈ AB
           @test (Octavian.matmul(A, Bre)) ≈ ABre
           @test (Octavian.matmul(Are, B)) ≈ AreB
@@ -154,7 +153,6 @@ function test_real(
           B′ = permutedims(B)'
           AB = A * B
           Ab = A * b
-          @info "" T n k m
           @test (Octavian.matmul(A, B)) ≈ AB
           @test (Octavian.matmul(A′, B)) ≈ AB
           @test (Octavian.matmul(A, B′)) ≈ AB
