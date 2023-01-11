@@ -5,9 +5,7 @@ versioninfo()
 @info("Sys.CPU_THREADS is $(Sys.CPU_THREADS)")
 @info("Threads.nthreads() is $(Threads.nthreads()) threads")
 
-function is_coverage()
-    return !iszero(Base.JLOptions().code_coverage)
-end
+is_coverage() = !iszero(Base.JLOptions().code_coverage)
 
 const coverage = is_coverage()
 

@@ -1,8 +1,6 @@
-n_values  = [1, 10, 20, 50, 100, 150, 200, 400]
-k_values  = [10, 20, 50, 100, 150, 200, 400]
-m_values  = [10, 20, 50, 100, 150, 200, 400]
-
-
+n_values = [1, 10, 20, 50, 100, 150, 200, 400]
+k_values = [10, 20, 50, 100, 150, 200, 400]
+m_values = [10, 20, 50, 100, 150, 200, 400]
 
 typ = get(ENV, "JULIA_TEST_ELTYPE", "ALL")
 types = if typ == "Float64"
@@ -21,4 +19,3 @@ for T ∈ types
   @time test_complex(T, m_values, k_values, n_values, testset_name_suffix)
   @time test_real(T, m_values, k_values, n_values, testset_name_suffix)
 end
-

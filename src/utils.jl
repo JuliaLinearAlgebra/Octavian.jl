@@ -8,18 +8,19 @@
 Checks sizes for compatibility, and preserves the static size information if
 given a mix of static and dynamic sizes.
 """
-@inline function matmul_sizes(C,A,B)
-    MC, NC = size(C)
-    MA, KA = size(A)
-    KB, NB = size(B)
-    @assert ((MC == MA) & (KA == KB) & (NC == NB)) "Size mismatch."
-    (_select(MA, MC), _select(KA, KB), _select(NB, NC))
+@inline function matmul_sizes(C, A, B)
+  MC, NC = size(C)
+  MA, KA = size(A)
+  KB, NB = size(B)
+  @assert ((MC == MA) & (KA == KB) & (NC == NB)) "Size mismatch."
+  (_select(MA, MC), _select(KA, KB), _select(NB, NC))
 end
 
-function unsafe_copyto_turbo!(pB, pA, M, N)
-    LoopVectorization.@turbo for n ∈ CloseOpen(N), m ∈ CloseOpen(M)
-        pB[m,n] = pA[m,n]
-    end
+unsafe_copyto_turbo!(pB, pA, M, N) = LoopVectorization.@turbo for n ∈
+                                                                  CloseOpen(N),
+  m ∈ CloseOpen(M)
+
+  pB[m, n] = pA[m, n]
 end
 
 function default_stridedpointer_quote(::Type{T}, N, Ot) where {T}
@@ -29,48 +30,57 @@ function default_stridedpointer_quote(::Type{T}, N, Ot) where {T}
   o = Expr(:tuple)
   xt = Expr(:tuple)
   st = StaticInt(sizeof(T))
-  gf = GlobalRef(Core,:getfield)
+  gf = GlobalRef(Core, :getfield)
   for n ∈ 1:N
     push!(xt.args, Expr(:call, :*, :st, Expr(:call, gf, :x, n, false)))
     push!(R.args, n)
     push!(o.args, Expr(:call, Ot))
   end
   quote
-    $(Expr(:meta,:inline))
+    $(Expr(:meta, :inline))
     st = $st
     si = StrideIndex{$N,$R,$C}($xt, $o)
     stridedpointer(ptr, si, StaticInt{$B}())
   end
 end
 
-@generated function default_stridedpointer(ptr::Ptr{T}, x::X) where {T, N, X <: Tuple{Vararg{Integer,N}}}
-    default_stridedpointer_quote(T, N, :One)
+@generated function default_stridedpointer(
+  ptr::Ptr{T},
+  x::X
+) where {T,N,X<:Tuple{Vararg{Integer,N}}}
+  default_stridedpointer_quote(T, N, :One)
 end
-@generated function default_zerobased_stridedpointer(ptr::Ptr{T}, x::X) where {T, N, X <: Tuple{Vararg{Integer,N}}}
-    default_stridedpointer_quote(T, N, :Zero)
+@generated function default_zerobased_stridedpointer(
+  ptr::Ptr{T},
+  x::X
+) where {T,N,X<:Tuple{Vararg{Integer,N}}}
+  default_stridedpointer_quote(T, N, :Zero)
 end
 
-@generated function splitfirstdim(sp::StridedPointer{T,N,C,B,R}, ::StaticInt{M}) where {T,N,C,B,R,M}
-  gf = GlobalRef(Core,:getfield)
-  fx = M*sizeof(T)
-  xt = Expr(:tuple, :x0, Expr(:call, *, :x0, StaticInt(M*sizeof(T))))
+@generated function splitfirstdim(
+  sp::StridedPointer{T,N,C,B,R},
+  ::StaticInt{M}
+) where {T,N,C,B,R,M}
+  gf = GlobalRef(Core, :getfield)
+  fx = M * sizeof(T)
+  xt = Expr(:tuple, :x0, Expr(:call, *, :x0, StaticInt(M * sizeof(T))))
   ot = Expr(:tuple, Zero(), Zero())
   R₁ = (R[1])::Int
-  Rn = Expr(:tuple, R₁, R₁+1)
+  Rn = Expr(:tuple, R₁, R₁ + 1)
   for n ∈ 2:N
     push!(xt.args, Expr(:call, gf, :x, n, false))
     push!(ot.args, Zero())
     Rₙ = (R[n])::Int
     push!(Rn.args, Core.ifelse(Rₙ > R₁, Rₙ + 1, Rₙ))
   end
-  Cn = Core.ifelse(C > 1, C+1, C)
-  Bn = Core.ifelse(B > 1, B+1, B)
+  Cn = Core.ifelse(C > 1, C + 1, C)
+  Bn = Core.ifelse(B > 1, B + 1, B)
   quote
-    $(Expr(:meta,:inline))
+    $(Expr(:meta, :inline))
     x = strides(sp)
     x0 = $gf(x, 1, false)
-    si = StrideIndex{$(N+1),$Rn,$Cn}($xt, $ot)
-    stridedpointer($gf(sp,:p), si, StaticInt{$Bn}())
+    si = StrideIndex{$(N + 1),$Rn,$Cn}($xt, $ot)
+    stridedpointer($gf(sp, :p), si, StaticInt{$Bn}())
   end
 end
 @generated function droplastdim(sp::StridedPointer{T,N,C,B,R}) where {T,N,C,B,R}
@@ -79,18 +89,17 @@ end
   xt = Expr(:tuple)
   ot = Expr(:tuple)
   rt = Expr(:tuple)
-  gf = GlobalRef(Core,:getfield)
+  gf = GlobalRef(Core, :getfield)
   for n ∈ 1:N-1
     push!(xt.args, Expr(:call, gf, :x, n, false))
     push!(ot.args, Expr(:call, gf, :o, n, false))
     push!(rt.args, R[n])
   end
   quote
-    $(Expr(:meta,:inline))
+    $(Expr(:meta, :inline))
     x = strides(sp)
     o = offsets(sp)
-    si = StrideIndex{$(N-1),$rt,$Cn}($xt, $ot)
-    stridedpointer($gf(sp,:p), si, StaticInt{$Bn}())
+    si = StrideIndex{$(N - 1),$rt,$Cn}($xt, $ot)
+    stridedpointer($gf(sp, :p), si, StaticInt{$Bn}())
   end
 end
-
