@@ -1,5 +1,7 @@
 function __init__()
-  @require ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210" include("forward_diff.jl")
+  @require ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210" include(
+    "forward_diff.jl"
+  )
 
   init_acache()
   init_bcache()
@@ -8,7 +10,7 @@ function __init__()
     msg = string(
       "Your system has $(num_cores()) physical cores, but `Octavian.jl` only has ",
       "$(nt > 1 ? "$(nt) threads" : "$(nt) thread") available. ",
-      "For the best performance, you should start Julia with at least $(num_cores()) threads.",
+      "For the best performance, you should start Julia with at least $(num_cores()) threads."
     )
     @warn msg
   end
@@ -21,7 +23,7 @@ function init_bcache()
       BCACHEPTR[] = VectorizationBase.valloc(
         Threads.nthreads() * second_cache_size() * bcache_count(),
         Cvoid,
-        ccall(:jl_getpagesize, Int, ()),
+        ccall(:jl_getpagesize, Int, ())
       )
     end
   end
@@ -33,7 +35,7 @@ function init_acache()
     ACACHEPTR[] = VectorizationBase.valloc(
       first_cache_size() * init_num_tasks(),
       Cvoid,
-      ccall(:jl_getpagesize, Int, ()),
+      ccall(:jl_getpagesize, Int, ())
     )
   end
   nothing

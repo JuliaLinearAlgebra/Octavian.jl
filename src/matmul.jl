@@ -13,27 +13,32 @@ function matmul_st_only_pack_A!(
   ::StaticFloat64{W₁},
   ::StaticFloat64{W₂},
   ::StaticFloat64{R₁},
-  ::StaticFloat64{R₂},
+  ::StaticFloat64{R₂}
 ) where {T,W₁,W₂,R₁,R₂}
-
   mᵣ, _ = matmul_params(Val(T))
-  ((Mblock, Mblock_Mrem, Mremfinal, Mrem, Miter), (Kblock, Kblock_Krem, Krem, Kiter)) =
-    solve_McKc(
-      Val(T),
-      M,
-      K,
-      N,
-      StaticFloat64{W₁}(),
-      StaticFloat64{W₂}(),
-      StaticFloat64{R₁}(),
-      StaticFloat64{R₂}(),
-      mᵣ,
-    )
+  (
+    (Mblock, Mblock_Mrem, Mremfinal, Mrem, Miter),
+    (Kblock, Kblock_Krem, Krem, Kiter)
+  ) = solve_McKc(
+    Val(T),
+    M,
+    K,
+    N,
+    StaticFloat64{W₁}(),
+    StaticFloat64{W₂}(),
+    StaticFloat64{R₁}(),
+    StaticFloat64{R₂}(),
+    mᵣ
+  )
   for ko ∈ CloseOpen(Kiter)
     ksize = ifelse(ko < Krem, Kblock_Krem, Kblock)
     let A = A, C = C
       for mo in CloseOpen(Miter)
-        msize = ifelse((mo + 1) == Miter, Mremfinal, ifelse(mo < Mrem, Mblock_Mrem, Mblock))
+        msize = ifelse(
+          (mo + 1) == Miter,
+          Mremfinal,
+          ifelse(mo < Mrem, Mblock_Mrem, Mblock)
+        )
         # if ko == 0
         #     loopmul!(C, A, B, α, β, msize, ksize, N)
         # else
@@ -67,7 +72,7 @@ function matmul_st_pack_A_and_B!(
   W₂,
   R₁,
   R₂,
-  tid,
+  tid
 ) where {T}
   mᵣ, nᵣ = matmul_params(Val(T))
   # TODO: if this is nested in other threaded code, use only a piece of BCACHE and make R₂ (and thus L₂ₑ) smaller
@@ -87,8 +92,11 @@ function matmul_st_pack_A_and_B!(
         unsafe_copyto_turbo!(_B, B, ksize, nsize)
         let A = A, C = C, B = _B
           for m in CloseOpen(Miter)
-            msize =
-              ifelse((m + 1) == Miter, Mremfinal, ifelse(m < Mrem, Mblock_Mrem, Mblock))
+            msize = ifelse(
+              (m + 1) == Miter,
+              Mremfinal,
+              ifelse(m < Mrem, Mblock_Mrem, Mblock)
+            )
             if k == 0
               packaloopmul!(C, A, B, α, β, msize, ksize, nsize)
             else
@@ -125,23 +133,25 @@ end
   K,
   ::StaticInt{mc},
   ::StaticInt{kc},
-  ::Type{Tc},
+  ::Type{Tc}
 ) where {mc,kc,Tc,Ta}
   (
     contiguousstride1(pA) && (
       (((MᵣW_mul_factor() + StaticInt(5)) * pick_vector_width(Tc)) ≥ M) || (
         vectormultiple(bytestride(pA, StaticInt{2}()), Tc, Ta) &&
         ((M * K) ≤ (mc * kc)) &&
-        iszero(reinterpret(Int, pointer(pA)) & (VectorizationBase.register_size() - One()))
+        iszero(
+          reinterpret(Int, pointer(pA)) &
+          (VectorizationBase.register_size() - One())
+        )
       )
     )
   )
 end
 
-
 @inline function alloc_matmul_product(
   A::AbstractArray{TA},
-  B::AbstractMatrix{TB},
+  B::AbstractMatrix{TB}
 ) where {TA,TB}
   # TODO: if `M` and `N` are statically sized, shouldn't return a `Matrix`.
   M, KA = size(A)
@@ -155,7 +165,7 @@ end
 end
 @inline function alloc_matmul_product(
   A::AbstractArray{TA},
-  B::AbstractVector{TB},
+  B::AbstractVector{TB}
 ) where {TA,TB}
   # TODO: if `M` and `N` are statically sized, shouldn't return a `Matrix`.
   M, KA = size(A)
@@ -166,12 +176,28 @@ end
 
 @inline function matmul_serial(A::AbstractMatrix, B::AbstractVecOrMat)
   C, (M, K, N) = alloc_matmul_product(A, B)
-  matmul_serial!(C, A, B, One(), Zero(), (M, K, N), ArrayInterface.contiguous_axis(C))
+  matmul_serial!(
+    C,
+    A,
+    B,
+    One(),
+    Zero(),
+    (M, K, N),
+    ArrayInterface.contiguous_axis(C)
+  )
   return C
 end
 @inline function matmul_serial(A::AbstractMatrix, B::AbstractVecOrMat, α)
   C, (M, K, N) = alloc_matmul_product(A, B)
-  matmul_serial!(C, A, B, α, Zero(), (M, K, N), ArrayInterface.contiguous_axis(C))
+  matmul_serial!(
+    C,
+    A,
+    B,
+    α,
+    Zero(),
+    (M, K, N),
+    ArrayInterface.contiguous_axis(C)
+  )
   return C
 end
 @inline function matmul_serial(A::AbstractMatrix, B::AbstractVecOrMat, α, β)
@@ -180,26 +206,48 @@ end
   return C
 end
 
-
 # These methods must be compile time constant
 maybeinline(::Any, ::Any, ::Any, ::Any) = false
-function maybeinline(::StaticInt{M}, ::StaticInt{N}, ::Type{T}, ::Val{true}) where {M,N,T}
+function maybeinline(
+  ::StaticInt{M},
+  ::StaticInt{N},
+  ::Type{T},
+  ::Val{true}
+) where {M,N,T}
   mᵣ, nᵣ = matmul_params(Val(T))
-  static_sizeof(T) * StaticInt{M}() * StaticInt{N}() < StaticInt{176}() * mᵣ * nᵣ
+  static_sizeof(T) * StaticInt{M}() * StaticInt{N}() <
+  StaticInt{176}() * mᵣ * nᵣ
 end
-function maybeinline(::StaticInt{M}, ::StaticInt{N}, ::Type{T}, ::Val{false}) where {M,N,T}
-  StaticInt{M}() * static_sizeof(T) ≤ StaticInt{2}() * VectorizationBase.register_size()
+function maybeinline(
+  ::StaticInt{M},
+  ::StaticInt{N},
+  ::Type{T},
+  ::Val{false}
+) where {M,N,T}
+  StaticInt{M}() * static_sizeof(T) ≤
+  StaticInt{2}() * VectorizationBase.register_size()
 end
 
-
-@inline function matmul_serial!(C::AbstractVecOrMat, A::AbstractMatrix, B::AbstractVecOrMat)
-  matmul_serial!(C, A, B, One(), Zero(), nothing, ArrayInterface.contiguous_axis(C))
+@inline function matmul_serial!(
+  C::AbstractVecOrMat,
+  A::AbstractMatrix,
+  B::AbstractVecOrMat
+)
+  matmul_serial!(
+    C,
+    A,
+    B,
+    One(),
+    Zero(),
+    nothing,
+    ArrayInterface.contiguous_axis(C)
+  )
 end
 @inline function matmul_serial!(
   C::AbstractVecOrMat,
   A::AbstractMatrix,
   B::AbstractVecOrMat,
-  α,
+  α
 )
   matmul_serial!(C, A, B, α, Zero(), nothing, ArrayInterface.contiguous_axis(C))
 end
@@ -208,7 +256,7 @@ end
   A::AbstractMatrix,
   B::AbstractVecOrMat,
   α,
-  β,
+  β
 )
   matmul_serial!(C, A, B, α, β, nothing, ArrayInterface.contiguous_axis(C))
 end
@@ -219,7 +267,7 @@ end
   α,
   β,
   ::Nothing,
-  ::StaticInt{2},
+  ::StaticInt{2}
 )
   _matmul_serial!(transpose(C), transpose(B), transpose(A), α, β, nothing)
   return C
@@ -231,7 +279,7 @@ end
   α,
   β,
   (M, K, N)::Tuple{Vararg{Integer,3}},
-  ::StaticInt{2},
+  ::StaticInt{2}
 )
   _matmul_serial!(transpose(C), transpose(B), transpose(A), α, β, (N, K, M))
   return C
@@ -243,14 +291,14 @@ end
   α,
   β,
   MKN,
-  ::StaticInt,
+  ::StaticInt
 )
   _matmul_serial!(C, A, B, α, β, MKN)
   return C
 end
 
 """
-  matmul_serial!(C, A, B[, α = 1, β = 0])
+matmul_serial!(C, A, B[, α = 1, β = 0])
 
 Calculates `C = α * (A * B) + β * C` in place.
 
@@ -268,7 +316,7 @@ Otherwise, based on the array's size, whether they are transposed, and whether t
   B::AbstractMatrix,
   α,
   β,
-  MKN,
+  MKN
 ) where {T<:Base.HWReal}
   ((β ≢ Zero()) && iszero(β)) && return _matmul_serial!(C, A, B, α, Zero(), MKN)
   (β isa Bool) && return _matmul_serial!(C, A, B, α, One(), MKN)
@@ -307,10 +355,8 @@ function matmul_only_β!(C::AbstractMatrix{T}, ::StaticInt{0}) where {T}
   end
 end
 
-function matmul_only_β!(C::AbstractMatrix, β)
-  @turbo for i in eachindex(C)
-    C[i] = β * C[i]
-  end
+matmul_only_β!(C::AbstractMatrix, β) = @turbo for i in eachindex(C)
+  C[i] = β * C[i]
 end
 
 function matmul_st_pack_dispatcher!(
@@ -321,7 +367,7 @@ function matmul_st_pack_dispatcher!(
   β,
   M,
   K,
-  N,
+  N
 ) where {T}
   _, Kc, _Nc = block_sizes(Val(T))
   Nc = _Nc * min(Threads.nthreads(), num_cores())
@@ -338,7 +384,7 @@ function matmul_st_pack_dispatcher!(
       W₁Default(),
       W₂Default(),
       R₁Default(),
-      R₂Default(),
+      R₂Default()
     )
     # elseif notnested !== nothing && notnested
     #     matmul_st_pack_A_and_B!(pC, pA, pB, α, β, M, K, N, W₁Default(), W₂Default(), R₁Default(), R₂Default(), nothing)
@@ -356,7 +402,7 @@ function matmul_st_pack_dispatcher!(
       W₂Default(),
       R₁Default(),
       R₂Default() / Threads.nthreads(),
-      Threads.threadid() - 1,
+      Threads.threadid() - 1
     )
   end
   nothing
@@ -372,8 +418,10 @@ Multiply matrices `A` and `B`.
   matmul!(C, A, B, α, β, nothing, (M, K, N), ArrayInterface.contiguous_axis(C))
   return C
 end
-@inline matmul(A::AbstractMatrix, B::AbstractVecOrMat) = matmul(A, B, One(), Zero())
-@inline matmul(A::AbstractMatrix, B::AbstractVecOrMat, α) = matmul(A, B, α, Zero())
+@inline matmul(A::AbstractMatrix, B::AbstractVecOrMat) =
+  matmul(A, B, One(), Zero())
+@inline matmul(A::AbstractMatrix, B::AbstractVecOrMat, α) =
+  matmul(A, B, α, Zero())
 
 """
     matmul!(C, A, B[, α, β, max_threads])
@@ -381,13 +429,46 @@ end
 Calculates `C = α * A * B + β * C` in place, overwriting the contents of `C`.
 It may use up to `max_threads` threads. It will not use threads when nested in other threaded code.
 """
-@inline function matmul!(C::AbstractVecOrMat, A::AbstractMatrix, B::AbstractVecOrMat)
-  matmul!(C, A, B, One(), Zero(), nothing, nothing, ArrayInterface.contiguous_axis(C))
+@inline function matmul!(
+  C::AbstractVecOrMat,
+  A::AbstractMatrix,
+  B::AbstractVecOrMat
+)
+  matmul!(
+    C,
+    A,
+    B,
+    One(),
+    Zero(),
+    nothing,
+    nothing,
+    ArrayInterface.contiguous_axis(C)
+  )
 end
-@inline function matmul!(C::AbstractVecOrMat, A::AbstractMatrix, B::AbstractVecOrMat, α)
-  matmul!(C, A, B, α, Zero(), nothing, nothing, ArrayInterface.contiguous_axis(C))
+@inline function matmul!(
+  C::AbstractVecOrMat,
+  A::AbstractMatrix,
+  B::AbstractVecOrMat,
+  α
+)
+  matmul!(
+    C,
+    A,
+    B,
+    α,
+    Zero(),
+    nothing,
+    nothing,
+    ArrayInterface.contiguous_axis(C)
+  )
 end
-@inline function matmul!(C::AbstractVecOrMat, A::AbstractMatrix, B::AbstractVecOrMat, α, β)
+@inline function matmul!(
+  C::AbstractVecOrMat,
+  A::AbstractMatrix,
+  B::AbstractVecOrMat,
+  α,
+  β
+)
   matmul!(C, A, B, α, β, nothing, nothing, ArrayInterface.contiguous_axis(C))
 end
 @inline function matmul!(
@@ -396,7 +477,7 @@ end
   B::AbstractVecOrMat,
   α,
   β,
-  nthread,
+  nthread
 )
   matmul!(C, A, B, α, β, nthread, nothing, ArrayInterface.contiguous_axis(C))
 end
@@ -408,7 +489,7 @@ end
   β,
   nthread,
   ::Nothing,
-  ::StaticInt{2},
+  ::StaticInt{2}
 )
   _matmul!(transpose(C), transpose(B), transpose(A), α, β, nthread, nothing)
   return C
@@ -421,7 +502,7 @@ end
   β,
   nthread,
   (M, K, N)::Tuple{Vararg{Integer,3}},
-  ::StaticInt{2},
+  ::StaticInt{2}
 )
   _matmul!(transpose(C), transpose(B), transpose(A), α, β, nthread, (N, K, M))
   return C
@@ -434,7 +515,7 @@ end
   β,
   nthread,
   MKN,
-  ::StaticInt,
+  ::StaticInt
 )
   _matmul!(C, A, B, α, β, nthread, MKN)
   return C
@@ -447,15 +528,24 @@ end
   ::StaticInt{mc},
   ::StaticInt{kc},
   ::Type{Tc},
-  nspawn,
+  nspawn
 ) where {mc,kc,Tc,Ta}
   # TODO: perhaps consider K vs kc by themselves?
   (contiguousstride1(pA) && ((M * K) ≤ (mc * kc) * nspawn >>> 1))
 end
 
 # passing MKN directly would let osmeone skip the size check.
-@inline function _matmul!(C::AbstractMatrix{T}, A, B, α, β, nthread, MKN) where {T}
-  ((β ≢ Zero()) && iszero(β)) && return _matmul!(C, A, B, α, Zero(), nthread, MKN)
+@inline function _matmul!(
+  C::AbstractMatrix{T},
+  A,
+  B,
+  α,
+  β,
+  nthread,
+  MKN
+) where {T}
+  ((β ≢ Zero()) && iszero(β)) &&
+    return _matmul!(C, A, B, α, Zero(), nthread, MKN)
   (β isa Bool) && return _matmul!(C, A, B, α, One(), nthread, MKN)
   M, K, N = MKN === nothing ? matmul_sizes(C, A, B) : MKN
   if M * N == 0
@@ -504,12 +594,13 @@ function matmulsplitn!(
   K,
   N,
   threads,
-  ::Val{PACK},
+  ::Val{PACK}
 ) where {T,Mc,PACK}
   Mᵣ, Nᵣ = matmul_params(Val(T))
   W = pick_vector_width(T)
   MᵣW = Mᵣ * W
-  _Mblocks, Nblocks = divide_blocks(Val(T), M, cld_fast(N, Nᵣ), threads.i % Int + 1, W)
+  _Mblocks, Nblocks =
+    divide_blocks(Val(T), M, cld_fast(N, Nᵣ), threads.i % Int + 1, W)
   Mbsize, Mrem, Mremfinal, Mblocks = split_m(M, _Mblocks, W)
   # Nblocks = min(N, _Nblocks)
   Nbsize, Nrem = divrem_fast(N, Nblocks)
@@ -534,13 +625,35 @@ function matmulsplitn!(
           msize = ifelse(__Mblocks ≥ Mrc, Mbsize_Mrem, Mbsize_)
           __Mblocks -= 1
           (tnum, tuu) = PolyesterWeave.iter(tnum, tuu)
-          launch_thread_mul!(_C, _A, _B, α, β, msize, K, nsize, tnum, Val{PACK}())
+          launch_thread_mul!(
+            _C,
+            _A,
+            _B,
+            α,
+            β,
+            msize,
+            K,
+            nsize,
+            tnum,
+            Val{PACK}()
+          )
           _A = gesp(_A, (msize, Zero()))
           _C = gesp(_C, (msize, Zero()))
         end
         if Nblocks != 0
           (tnum, tuu) = PolyesterWeave.iter(tnum, tuu)
-          launch_thread_mul!(_C, _A, _B, α, β, Mremfinal, K, nsize, tnum, Val{PACK}())
+          launch_thread_mul!(
+            _C,
+            _A,
+            _B,
+            α,
+            β,
+            Mremfinal,
+            K,
+            nsize,
+            tnum,
+            Val{PACK}()
+          )
         else
           call_loopmul!(_C, _A, _B, α, β, Mremfinal, K, nsize, Val{PACK}())
           waitonmultasks(threads, _nspawn)
@@ -562,7 +675,7 @@ function __matmul!(
   M,
   K,
   N,
-  nthread,
+  nthread
 ) where {T}
   _, nᵣ = matmul_params(Val(T))
   W = pick_vector_width(T)
@@ -587,7 +700,7 @@ function __matmul!(
   threads, torelease = PolyesterWeave.__request_threads(
     _nrequest % UInt32,
     PolyesterWeave.worker_pointer(),
-    nothing,
+    nothing
   )
 
   nrequest = threads.i
@@ -631,13 +744,12 @@ function __matmul!(
       W₁Default(),
       W₂Default(),
       R₁Default(),
-      R₂Default(),
+      R₂Default()
     )
   end
   PolyesterWeave.free_threads!(torelease)
   nothing
 end
-
 
 # If tasks is [0,1,2,3] (e.g., `CloseOpen(0,4)`), it will wait on `MULTASKS[i]` for `i = [1,2,3]`.
 function waitonmultasks(threads, nthread)
@@ -662,16 +774,20 @@ function matmul_pack_A_and_B!(
   ::StaticFloat64{W₁},
   ::StaticFloat64{W₂},
   ::StaticFloat64{R₁},
-  ::StaticFloat64{R₂},#, ::Val{1}
+  ::StaticFloat64{R₂}#, ::Val{1}
 ) where {T,W₁,W₂,R₁,R₂}
   W = pick_vector_width(T)
   # atomicsync = Ref{NTuple{16,UInt}}()
   Mbsize, Mrem, Mremfinal, _to_spawn = split_m(M, threads.i % Int + 1, W) # M is guaranteed to be > W because of `W ≥ M` condition for `jmultsplitn!`...
   atomicsync = allocref((StaticInt{1}() + num_cores()) * cache_linesize())
-  p = align(reinterpret(Ptr{UInt32}, Base.unsafe_convert(Ptr{UInt8}, atomicsync)))
+  p =
+    align(reinterpret(Ptr{UInt32}, Base.unsafe_convert(Ptr{UInt8}, atomicsync)))
   GC.@preserve atomicsync begin
     for i ∈ CloseOpen(_to_spawn)
-      store!(reinterpret(Ptr{UInt64}, p) + i * cache_linesize(), 0x0000000000000000)
+      store!(
+        reinterpret(Ptr{UInt64}, p) + i * cache_linesize(),
+        0x0000000000000000
+      )
     end
     Mblock_Mrem, Mblock_ = promote(Mbsize + W, Mbsize)
     u_to_spawn = _to_spawn % UInt
@@ -699,7 +815,7 @@ function matmul_pack_A_and_B!(
         StaticFloat64{W₁}(),
         StaticFloat64{W₂}(),
         StaticFloat64{R₁}(),
-        StaticFloat64{R₂}(),
+        StaticFloat64{R₂}()
       )
       A = gesp(A, (Mblock, Zero()))
       C = gesp(C, (Mblock, Zero()))
@@ -720,7 +836,7 @@ function matmul_pack_A_and_B!(
       StaticFloat64{W₁}(),
       StaticFloat64{W₂}(),
       StaticFloat64{R₁}(),
-      StaticFloat64{R₂}(),
+      StaticFloat64{R₂}()
     )
     waitonmultasks(threads, _to_spawn)
   end
@@ -744,9 +860,8 @@ function sync_mul!(
   ::StaticFloat64{W₁},
   ::StaticFloat64{W₂},
   ::StaticFloat64{R₁},
-  ::StaticFloat64{R₂},
+  ::StaticFloat64{R₂}
 ) where {T,W₁,W₂,R₁,R₂}
-
   (Mblock, Mblock_Mrem, Mremfinal, Mrem, Miter),
   (Kblock, Kblock_Krem, Krem, Kiter),
   (Nblock, Nblock_Nrem, Nrem, Niter) = solve_block_sizes(
@@ -758,16 +873,18 @@ function sync_mul!(
     StaticFloat64{W₂}(),
     StaticFloat64{R₁}(),
     StaticFloat64{R₂}() * total_ids, # scale up the L₃ size we're allowed to use
-    One(),
+    One()
   )
 
   sync_iters = 0x00000000
   myp = atomicp + id * cache_linesize()
   Npackb_r_div, Npackb_r_rem = divrem_fast(Nblock_Nrem, total_ids)
-  Npackb_r_block_rem, Npackb_r_block_ = promote(Npackb_r_div + One(), Npackb_r_div)
+  Npackb_r_block_rem, Npackb_r_block_ =
+    promote(Npackb_r_div + One(), Npackb_r_div)
 
   Npackb___div, Npackb___rem = divrem_fast(Nblock, total_ids)
-  Npackb___block_rem, Npackb___block_ = promote(Npackb___div + One(), Npackb___div)
+  Npackb___block_rem, Npackb___block_ =
+    promote(Npackb___div + One(), Npackb___div)
 
   pack_r_offset = Npackb_r_div * id + min(id, Npackb_r_rem)
   pack___offset = Npackb___div * id + min(id, Npackb___rem)
@@ -790,7 +907,7 @@ function sync_mul!(
           gesp(_B, (Zero(), pack_offset)),
           gesp(B, (Zero(), pack_offset)),
           ksize,
-          pack_len,
+          pack_len
         )
         # synchronize before starting the multiplication, to ensure `B` is packed
         _mv = _atomic_add!(myp, 0x00000001)
@@ -806,8 +923,11 @@ function sync_mul!(
         # multiply
         let A = A, B = _B, C = C
           for m in CloseOpen(Miter)
-            msize =
-              ifelse((m + 1) == Miter, Mremfinal, ifelse(m < Mrem, Mblock_Mrem, Mblock))
+            msize = ifelse(
+              (m + 1) == Miter,
+              Mremfinal,
+              ifelse(m < Mrem, Mblock_Mrem, Mblock)
+            )
             if k == 0
               packaloopmul!(C, A, B, α, β, msize, ksize, nsize)
             else
@@ -844,7 +964,7 @@ function _matmul!(
   α,
   β,
   _,
-  __,
+  __
 ) where {T}
   @tturbo for m ∈ indices((A, y), 1)
     yₘ = zero(T)
@@ -861,7 +981,7 @@ function _matmul_serial!(
   x::AbstractVector,
   α,
   β,
-  _,
+  _
 ) where {T}
   @turbo for m ∈ indices((A, y), 1)
     yₘ = zero(T)
@@ -872,5 +992,3 @@ function _matmul_serial!(
   end
   return y
 end
-
-

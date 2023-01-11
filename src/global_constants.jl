@@ -2,7 +2,9 @@
 const OCTAVIAN_NUM_TASKS = Ref(1)
 _nthreads() = OCTAVIAN_NUM_TASKS[]
 
-@generated function calc_factors(::Union{Val{nc},StaticInt{nc}} = num_cores()) where {nc}
+@generated function calc_factors(
+  ::Union{Val{nc},StaticInt{nc}} = num_cores()
+) where {nc}
   t = Expr(:tuple)
   for i ∈ nc:-1:1
     d, r = divrem(nc, i)
@@ -27,9 +29,12 @@ R₁Default_arch(::Val{:znver1}) = StaticFloat64{0.6077103834481342}()
 R₂Default_arch(::Val{:znver1}) = StaticFloat64{0.8775382433240162}()
 
 W₁Default_arch(::Union{Val{:znver2},Val{:znver3}}) = StaticFloat64{0.1}()
-W₂Default_arch(::Union{Val{:znver2},Val{:znver3}}) = StaticFloat64{0.993489411720157}()
-R₁Default_arch(::Union{Val{:znver2},Val{:znver3}}) = StaticFloat64{0.6052218809954467}()
-R₂Default_arch(::Union{Val{:znver2},Val{:znver3}}) = StaticFloat64{0.7594052633561165}()
+W₂Default_arch(::Union{Val{:znver2},Val{:znver3}}) =
+  StaticFloat64{0.993489411720157}()
+R₁Default_arch(::Union{Val{:znver2},Val{:znver3}}) =
+  StaticFloat64{0.6052218809954467}()
+R₂Default_arch(::Union{Val{:znver2},Val{:znver3}}) =
+  StaticFloat64{0.7594052633561165}()
 
 W₁Default_arch(_) = StaticFloat64{0.05846951331683783}()
 W₂Default_arch(_) = StaticFloat64{0.16070447575367697}()
@@ -46,7 +51,6 @@ W₂Default() = W₂Default(has_feature(Val(:x86_64_avx512f)))
 R₁Default() = R₁Default(has_feature(Val(:x86_64_avx512f)))
 R₂Default() = R₂Default(has_feature(Val(:x86_64_avx512f)))
 
-
 @static if Sys.ARCH === :x86_64 || Sys.ARCH === :i686
   first_cache() = StaticInt{2}()
 else
@@ -58,7 +62,7 @@ second_cache() = first_cache() + One()
 _first_cache_size(fcs::StaticInt) = ifelse(
   eq(first_cache(), StaticInt(2)) & cache_inclusive(StaticInt(2)),
   fcs - cache_size(One()),
-  fcs,
+  fcs
 )
 _first_cache_size(::Nothing) = StaticInt(262144)
 first_cache_size() = _first_cache_size(cache_size(first_cache()))
@@ -80,4 +84,3 @@ const BCACHEPTR = Ref{Ptr{Cvoid}}(C_NULL)
 const BCACHE_LOCK = Threads.Atomic{UInt}(zero(UInt))
 
 const ACACHEPTR = Ref{Ptr{Cvoid}}(C_NULL)
-

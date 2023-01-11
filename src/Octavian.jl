@@ -35,7 +35,8 @@ using Static:
   floortostaticint
 using ManualMemory: MemoryBuffer, load, store!
 
-using ThreadingUtilities: _atomic_add!, _atomic_load, _atomic_store!, launch, wait, SPIN
+using ThreadingUtilities:
+  _atomic_add!, _atomic_load, _atomic_store!, launch, wait, SPIN
 
 using SnoopPrecompile: @precompile_setup, @precompile_all_calls
 
@@ -87,6 +88,5 @@ include("init.jl") # `Octavian.__init__()` is defined in this file
     end
   end
 end
-
 
 end # module Octavian
