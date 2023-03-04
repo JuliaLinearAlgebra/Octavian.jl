@@ -9,9 +9,9 @@ Checks sizes for compatibility, and preserves the static size information if
 given a mix of static and dynamic sizes.
 """
 @inline function matmul_sizes(C, A, B)
-  MC, NC = size(C)
-  MA, KA = size(A)
-  KB, NB = size(B)
+  MC, NC = static_size(C)
+  MA, KA = static_size(A)
+  KB, NB = static_size(B)
   @assert ((MC == MA) & (KA == KB) & (NC == NB)) "Size mismatch."
   (_select(MA, MC), _select(KA, KB), _select(NB, NC))
 end
@@ -77,7 +77,7 @@ end
   Bn = Core.ifelse(B > 1, B + 1, B)
   quote
     $(Expr(:meta, :inline))
-    x = strides(sp)
+    x = static_strides(sp)
     x0 = $gf(x, 1, false)
     si = StrideIndex{$(N + 1),$Rn,$Cn}($xt, $ot)
     stridedpointer($gf(sp, :p), si, StaticInt{$Bn}())
@@ -97,7 +97,7 @@ end
   end
   quote
     $(Expr(:meta, :inline))
-    x = strides(sp)
+    x = static_strides(sp)
     o = offsets(sp)
     si = StrideIndex{$(N - 1),$rt,$Cn}($xt, $ot)
     stridedpointer($gf(sp, :p), si, StaticInt{$Bn}())

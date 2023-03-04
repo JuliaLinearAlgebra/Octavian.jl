@@ -1,6 +1,5 @@
 real_rep(a::AbstractArray{Complex{T},N}) where {T,N} =
   reinterpret(reshape, T, a)
-#PtrArray(Ptr{T}(pointer(a)), (StaticInt(2), size(a)...))
 
 for AT in [:AbstractVector, :AbstractMatrix]  # to avoid ambiguity error
   @eval begin

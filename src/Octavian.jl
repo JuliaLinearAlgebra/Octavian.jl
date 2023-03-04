@@ -2,7 +2,7 @@ module Octavian
 
 using Requires: @require
 
-using VectorizationBase, ArrayInterface, LoopVectorization
+using VectorizationBase, StaticArrayInterface, LoopVectorization
 
 using VectorizationBase:
   align,
@@ -18,7 +18,9 @@ using VectorizationBase:
   has_feature
 using CPUSummary: cache_size, num_cores, cache_inclusive, cache_linesize
 using LoopVectorization: preserve_buffer, CloseOpen, UpperBoundedInteger
-using ArrayInterface: size, strides, offsets, indices, axes, StrideIndex
+using StaticArrayInterface:
+  static_size, static_strides, offsets, indices, axes, StrideIndex
+const ArrayInterface = StaticArrayInterface
 using IfElse: ifelse
 using PolyesterWeave
 using Static:

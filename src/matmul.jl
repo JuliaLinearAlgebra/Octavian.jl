@@ -120,7 +120,7 @@ end
 @inline contiguousstride1(A) = ArrayInterface.contiguous_axis(A) === One()
 @inline contiguousstride1(A::AbstractStridedPointer{T,N,1}) where {T,N} = true
 # @inline bytestride(A::AbstractArray, i) = VectorizationBase.bytestrides(A)[i]
-@inline bytestride(A::AbstractStridedPointer, i) = strides(A)[i]
+@inline bytestride(A::AbstractStridedPointer, i) = static_strides(A)[i]
 @inline firstbytestride(A::AbstractStridedPointer) = bytestride(A, One())
 
 @inline function vectormultiple(bytex, ::Type{Tc}, ::Type{Ta}) where {Tc,Ta}
@@ -154,8 +154,8 @@ end
   B::AbstractMatrix{TB}
 ) where {TA,TB}
   # TODO: if `M` and `N` are statically sized, shouldn't return a `Matrix`.
-  M, KA = size(A)
-  KB, N = size(B)
+  M, KA = static_size(A)
+  KB, N = static_size(B)
   @assert KA == KB "Size mismatch."
   if M === StaticInt(1)
     transpose(Vector{promote_type(TA, TB)}(undef, N)), (M, KA, N)
@@ -168,7 +168,7 @@ end
   B::AbstractVector{TB}
 ) where {TA,TB}
   # TODO: if `M` and `N` are statically sized, shouldn't return a `Matrix`.
-  M, KA = size(A)
+  M, KA = static_size(A)
   KB = length(B)
   @assert KA == KB "Size mismatch."
   Vector{promote_type(TA, TB)}(undef, M), (M, KA, One())
