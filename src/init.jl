@@ -1,7 +1,9 @@
 function __init__()
-  @require ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210" include(
-    "forward_diff.jl"
-  )
+  @static if !isdefined(Base, :get_extension)
+    @require ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210" include(
+      "../ext/ForwardDiffExt.jl"
+    )
+  end
 
   init_acache()
   init_bcache()

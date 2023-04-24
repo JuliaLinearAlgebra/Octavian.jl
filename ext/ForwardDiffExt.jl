@@ -1,3 +1,16 @@
+module ForwardDiffExt
+
+if isdefined(Base, :get_extension)
+  using ForwardDiff: ForwardDiff
+else
+  using ..ForwardDiff: ForwardDiff
+end
+
+using Octavian: ArrayInterface,
+                 @turbo, @tturbo,
+                 One, Zero,
+                 indices, static
+import Octavian: real_rep, _matmul!, _matmul_serial!
 
 real_rep(a::AbstractArray{DualT}) where {TAG,T,DualT<:ForwardDiff.Dual{TAG,T}} =
   reinterpret(reshape, T, a)
@@ -220,3 +233,5 @@ end
   end
   _C
 end
+
+end # module
