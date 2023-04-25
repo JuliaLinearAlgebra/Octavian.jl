@@ -1,9 +1,5 @@
 module Octavian
 
-if !isdefined(Base, :get_extension)
-  using Requires: @require
-end
-
 using VectorizationBase, StaticArrayInterface, LoopVectorization
 
 using VectorizationBase:
@@ -68,6 +64,14 @@ include("matmul.jl")
 include("complex_matmul.jl")
 
 include("init.jl") # `Octavian.__init__()` is defined in this file
+
+# TODO: This loads ForwardDiff unconditionally on Julia v1.6 - v1.8.
+#       It could be reconsidered when these older versions are not supported
+#       anymore. In this case, ForwardDiff should be removed from the
+#       dependencies and treated as weak dependency.
+if !isdefined(Base, :get_extension)
+  include("../ext/ForwardDiffExt.jl")
+end
 
 @static if VERSION >= v"1.8.0-beta1"
   @precompile_setup begin
