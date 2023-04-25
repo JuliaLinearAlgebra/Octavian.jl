@@ -1,15 +1,15 @@
 name = "Octavian"
 uuid = "6fd5a793-0b7e-452c-907f-f8bfe9c57db4"
 authors = ["Chris Elrod", "Dilum Aluthge", "Mason Protter", "contributors"]
-version = "0.3.21"
+version = "0.3.22"
 
 [deps]
 CPUSummary = "2a0fbf3d-bb9c-48f3-b0a9-814d99fd7ab9"
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 IfElse = "615f187c-cbe4-4ef1-ba3b-2fcf58d6d173"
 LoopVectorization = "bdcacae8-1622-11e9-2a5c-532679323890"
 ManualMemory = "d125e4d3-2237-4719-b19c-fa641b8a4667"
 PolyesterWeave = "1d0040c9-8b98-4ee7-8388-3f51789ca0ad"
-Requires = "ae029012-a4dd-5104-9daa-d747884805df"
 PrecompileTools = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
 Static = "aedffcd0-7271-4cad-89d0-dc628f76c6d3"
 StaticArrayInterface = "0d7ed370-da01-4f52-bd93-41d350b8b718"
@@ -18,17 +18,20 @@ VectorizationBase = "3d5dd08c-fd9d-11e8-17fa-ed2836048c2f"
 
 [compat]
 CPUSummary = "0.1.26, 0.2.1"
+ForwardDiff = "0.10"
 IfElse = "0.1"
 LoopVectorization = "0.12.86"
 ManualMemory = "0.1.1"
 PolyesterWeave = "0.1.1, 0.2"
-Requires = "1"
 PrecompileTools = "1"
 Static = "0.8.4"
 StaticArrayInterface = "1"
 ThreadingUtilities = "0.5"
 VectorizationBase = "0.21.15"
 julia = "1.6"
+
+[extensions]
+ForwardDiffExt = "ForwardDiff"
 
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
@@ -43,3 +46,6 @@ VectorizationBase = "3d5dd08c-fd9d-11e8-17fa-ed2836048c2f"
 
 [targets]
 test = ["Aqua", "BenchmarkTools", "ForwardDiff", "InteractiveUtils", "LinearAlgebra", "LoopVectorization", "Random", "VectorizationBase", "Test"]
+
+[weakdeps]
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
