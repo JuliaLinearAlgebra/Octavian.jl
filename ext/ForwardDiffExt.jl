@@ -42,41 +42,43 @@ function _matmul!(
 end
 
 # multiplication of dual matrix by standard vector/matrix from the right
-@inline function _matmul!(
-  _C::AbstractVecOrMat{DualT},
-  _A::AbstractMatrix{DualT},
-  B::AbstractVecOrMat,
-  α = One(),
-  β = Zero(),
-  nthread::Nothing = nothing,
-  MKN = nothing
-) where {TAG,T,DualT<:ForwardDiff.Dual{TAG,T}}
-  if Bool(ArrayInterface.is_dense(_C)) &&
-     Bool(ArrayInterface.is_column_major(_C)) &&
-     Bool(ArrayInterface.is_dense(_A)) &&
-     Bool(ArrayInterface.is_column_major(_A))
-    # we can avoid the reshape and call the standard method
-    A = reinterpret(T, _A)
-    C = reinterpret(T, _C)
-    _matmul!(C, A, B, α, β, nthread, nothing)
-  else
-    # we cannot use the standard method directly
-    A = real_rep(_A)
-    C = real_rep(_C)
+for AbstractVectorOrMatrix in (:AbstractVector, :AbstractMatrix)
+  @eval @inline function _matmul!(
+    _C::$(AbstractVectorOrMatrix){DualT},
+    _A::AbstractMatrix{DualT},
+    B::$(AbstractVectorOrMatrix),
+    α = One(),
+    β = Zero(),
+    nthread::Nothing = nothing,
+    MKN = nothing
+  ) where {TAG,T,DualT<:ForwardDiff.Dual{TAG,T}}
+    if Bool(ArrayInterface.is_dense(_C)) &&
+      Bool(ArrayInterface.is_column_major(_C)) &&
+      Bool(ArrayInterface.is_dense(_A)) &&
+      Bool(ArrayInterface.is_column_major(_A))
+      # we can avoid the reshape and call the standard method
+      A = reinterpret(T, _A)
+      C = reinterpret(T, _C)
+      _matmul!(C, A, B, α, β, nthread, nothing)
+    else
+      # we cannot use the standard method directly
+      A = real_rep(_A)
+      C = real_rep(_C)
 
-    @tturbo for n ∈ indices((C, B), (3, 2)),
-      m ∈ indices((C, A), 2),
-      l in indices((C, A), 1)
+      @tturbo for n ∈ indices((C, B), (3, 2)),
+        m ∈ indices((C, A), 2),
+        l in indices((C, A), 1)
 
-      Cₗₘₙ = zero(eltype(C))
-      for k ∈ indices((A, B), (3, 1))
-        Cₗₘₙ += A[l, m, k] * B[k, n]
+        Cₗₘₙ = zero(eltype(C))
+        for k ∈ indices((A, B), (3, 1))
+          Cₗₘₙ += A[l, m, k] * B[k, n]
+        end
+        C[l, m, n] = α * Cₗₘₙ + β * C[l, m, n]
       end
-      C[l, m, n] = α * Cₗₘₙ + β * C[l, m, n]
     end
-  end
 
-  _C
+    _C
+  end
 end
 
 @inline function _matmul!(
@@ -151,40 +153,42 @@ function _matmul_serial!(
 end
 
 # multiplication of dual matrix by standard vector/matrix from the right
-@inline function _matmul_serial!(
-  _C::AbstractVecOrMat{DualT},
-  _A::AbstractMatrix{DualT},
-  B::AbstractVecOrMat,
-  α,
-  β,
-  MKN
-) where {TAG,T,DualT<:ForwardDiff.Dual{TAG,T}}
-  if Bool(ArrayInterface.is_dense(_C)) &&
-     Bool(ArrayInterface.is_column_major(_C)) &&
-     Bool(ArrayInterface.is_dense(_A)) &&
-     Bool(ArrayInterface.is_column_major(_A))
-    # we can avoid the reshape and call the standard method
-    A = reinterpret(T, _A)
-    C = reinterpret(T, _C)
-    _matmul_serial!(C, A, B, α, β, nothing)
-  else
-    # we cannot use the standard method directly
-    A = real_rep(_A)
-    C = real_rep(_C)
+for AbstractVectorOrMatrix in (:AbstractVector, :AbstractMatrix)
+  @eval @inline function _matmul_serial!(
+    _C::$(AbstractVectorOrMatrix){DualT},
+    _A::AbstractMatrix{DualT},
+    B::$(AbstractVectorOrMatrix),
+    α,
+    β,
+    MKN
+  ) where {TAG,T,DualT<:ForwardDiff.Dual{TAG,T}}
+    if Bool(ArrayInterface.is_dense(_C)) &&
+      Bool(ArrayInterface.is_column_major(_C)) &&
+      Bool(ArrayInterface.is_dense(_A)) &&
+      Bool(ArrayInterface.is_column_major(_A))
+      # we can avoid the reshape and call the standard method
+      A = reinterpret(T, _A)
+      C = reinterpret(T, _C)
+      _matmul_serial!(C, A, B, α, β, nothing)
+    else
+      # we cannot use the standard method directly
+      A = real_rep(_A)
+      C = real_rep(_C)
 
-    @turbo for n ∈ indices((C, B), (3, 2)),
-      m ∈ indices((C, A), 2),
-      l in indices((C, A), 1)
+      @turbo for n ∈ indices((C, B), (3, 2)),
+        m ∈ indices((C, A), 2),
+        l in indices((C, A), 1)
 
-      Cₗₘₙ = zero(eltype(C))
-      for k ∈ indices((A, B), (3, 1))
-        Cₗₘₙ += A[l, m, k] * B[k, n]
+        Cₗₘₙ = zero(eltype(C))
+        for k ∈ indices((A, B), (3, 1))
+          Cₗₘₙ += A[l, m, k] * B[k, n]
+        end
+        C[l, m, n] = α * Cₗₘₙ + β * C[l, m, n]
       end
-      C[l, m, n] = α * Cₗₘₙ + β * C[l, m, n]
     end
-  end
 
-  _C
+    _C
+  end
 end
 
 @inline function _matmul_serial!(
