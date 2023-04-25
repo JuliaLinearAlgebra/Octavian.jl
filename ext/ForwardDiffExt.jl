@@ -1,10 +1,6 @@
 module ForwardDiffExt
 
-if isdefined(Base, :get_extension)
-  using ForwardDiff: ForwardDiff
-else
-  using ..ForwardDiff: ForwardDiff
-end
+using ForwardDiff: ForwardDiff
 
 using Octavian: ArrayInterface,
                  @turbo, @tturbo,
