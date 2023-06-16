@@ -44,7 +44,9 @@ end
   Octavian.matmul_serial!(C3dual, A1dual', B1)
   Octavian.matmul_serial!(C4dual, A2dual', B2)
 
-  @test reinterpretHD(Float64, C1dual) ≈ reinterpretHD(Float64, C2dual) ≈ reinterpretHD(Float64, C3dual) ≈ reinterpretHD(Float64, C4dual)
+  Cref = zeros(Float64, size(C1)...)
+  LinearAlgebra.mul!(Cref, A1, B1)
+  @test reinterpretHD(Float64, C1dual) ≈ reinterpretHD(Float64, C2dual) ≈ reinterpretHD(Float64, C3dual) ≈ reinterpretHD(Float64, C4dual) ≈ Cref
 
 
   @testset "two dual arrays" begin
