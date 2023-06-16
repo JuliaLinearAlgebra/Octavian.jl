@@ -1,7 +1,6 @@
 module HyperDualNumbersExt
 
 using HyperDualNumbers: Hyper
-
 using Octavian: ArrayInterface,
                  @turbo, @tturbo,
                  One, Zero,
@@ -24,7 +23,7 @@ for AbstractVectorOrMatrix in (:AbstractVector, :AbstractMatrix)
     nthread::Nothing = nothing,
     MKN = nothing,
     contig_axis = nothing
-  ) where {DualT<:Hyper}
+  ) where {T, DualT<:Hyper{T}}
     B = real_rep(_B)
     C = real_rep(_C)
 
@@ -114,8 +113,7 @@ for AbstractVectorOrMatrix in (:AbstractVector, :AbstractMatrix)
         C[l, m, n] = α * Cₗₘₙ + β * C[l, m, n]
       end
     end
-    Pstatic = static(P)
-    @tturbo for n ∈ indices((B, C), 3), m ∈ indices((A, C), 2), p ∈ 1:Pstatic
+    @tturbo for n ∈ indices((B, C), 3), m ∈ indices((A, C), 2), p ∈ 1:3
       Cₚₘₙ = zero(eltype(C))
       for k ∈ indices((A, B), (3, 2))
         Cₚₘₙ += A[1, m, k] * B[p+1, k, n]
@@ -133,7 +131,7 @@ for AbstractVectorOrMatrix in (:AbstractVector, :AbstractMatrix)
     α,
     β,
     MKN
-  ) where {DualT<:Hyper}
+  ) where {T, DualT<:Hyper{T}}
     B = real_rep(_B)
     C = real_rep(_C)
 
@@ -195,7 +193,7 @@ for AbstractVectorOrMatrix in (:AbstractVector, :AbstractMatrix)
     α,
     β,
     MKN
-  ) where {DualT<:Hyper}
+  ) where {T, DualT<:Hyper{T}}
     A = real_rep(_A)
     C = real_rep(_C)
     B = real_rep(_B)
@@ -220,8 +218,8 @@ for AbstractVectorOrMatrix in (:AbstractVector, :AbstractMatrix)
         C[l, m, n] = α * Cₗₘₙ + β * C[l, m, n]
       end
     end
-    Pstatic = static(P)
-    @turbo for n ∈ indices((B, C), 3), m ∈ indices((A, C), 2), p ∈ 1:Pstatic
+
+    @turbo for n ∈ indices((B, C), 3), m ∈ indices((A, C), 2), p ∈ 1:3
       Cₚₘₙ = zero(eltype(C))
       for k ∈ indices((A, B), (3, 2))
         Cₚₘₙ += A[1, m, k] * B[p+1, k, n]

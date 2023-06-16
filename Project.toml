@@ -6,6 +6,7 @@ version = "0.3.22"
 [deps]
 CPUSummary = "2a0fbf3d-bb9c-48f3-b0a9-814d99fd7ab9"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+HyperDualNumbers = "50ceba7f-c3ee-5a84-a6e8-3ad40456ec97"
 IfElse = "615f187c-cbe4-4ef1-ba3b-2fcf58d6d173"
 LoopVectorization = "bdcacae8-1622-11e9-2a5c-532679323890"
 ManualMemory = "d125e4d3-2237-4719-b19c-fa641b8a4667"
@@ -16,9 +17,16 @@ StaticArrayInterface = "0d7ed370-da01-4f52-bd93-41d350b8b718"
 ThreadingUtilities = "8290d209-cae3-49c0-8002-c8c24d57dab5"
 VectorizationBase = "3d5dd08c-fd9d-11e8-17fa-ed2836048c2f"
 
+[weakdeps]
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+
+[extensions]
+ForwardDiffExt = "ForwardDiff"
+
 [compat]
 CPUSummary = "0.1.26, 0.2.1"
 ForwardDiff = "0.10"
+HyperDualNumbers = "4"
 IfElse = "0.1"
 LoopVectorization = "0.12.86"
 ManualMemory = "0.1.1"
@@ -30,13 +38,11 @@ ThreadingUtilities = "0.5"
 VectorizationBase = "0.21.15"
 julia = "1.6"
 
-[extensions]
-ForwardDiffExt = "ForwardDiff"
-
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+HyperDualNumbers = "50ceba7f-c3ee-5a84-a6e8-3ad40456ec97"
 InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 LoopVectorization = "bdcacae8-1622-11e9-2a5c-532679323890"
@@ -45,7 +51,4 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 VectorizationBase = "3d5dd08c-fd9d-11e8-17fa-ed2836048c2f"
 
 [targets]
-test = ["Aqua", "BenchmarkTools", "ForwardDiff", "InteractiveUtils", "LinearAlgebra", "LoopVectorization", "Random", "VectorizationBase", "Test"]
-
-[weakdeps]
-ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+test = ["Aqua", "BenchmarkTools", "ForwardDiff", "HyperDualNumbers", "InteractiveUtils", "LinearAlgebra", "LoopVectorization", "Random", "VectorizationBase", "Test"]

@@ -9,6 +9,7 @@ import Octavian
 import Aqua
 import BenchmarkTools
 import ForwardDiff
+import HyperDualNumbers
 import InteractiveUtils
 import LinearAlgebra
 import LoopVectorization
@@ -37,5 +38,5 @@ include("utils.jl")
 if sizeof(Int) >= 8 || !Sys.iswindows()
   include("forward_diff.jl")
 end
-
+include("hyperduals.jl")
 include("aqua.jl") # run the Aqua.jl tests last
