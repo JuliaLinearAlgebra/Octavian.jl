@@ -120,6 +120,14 @@ for AbstractVectorOrMatrix in (:AbstractVector, :AbstractMatrix)
       end
       C[p+1, m, n] = C[p+1, m, n] + α * Cₚₘₙ
     end
+
+    @tturbo for n ∈ indices((B, C), 3), m ∈ indices((A, C), 2)
+      Cₘₙ = zero(eltype(C))
+      for k ∈ indices((A, B), (3, 2))
+        Cₘₙ += A[2, m, k] * B[3, k, n] + A[3, m, k] * B[2, k, n]
+      end
+      C[4, m, n] = C[4, m, n] + α * Cₘₙ
+    end
     _C
   end
 
@@ -225,6 +233,14 @@ for AbstractVectorOrMatrix in (:AbstractVector, :AbstractMatrix)
         Cₚₘₙ += A[1, m, k] * B[p+1, k, n]
       end
       C[p+1, m, n] = C[p+1, m, n] + α * Cₚₘₙ
+    end
+
+    @tturbo for n ∈ indices((B, C), 3), m ∈ indices((A, C), 2)
+      Cₘₙ = zero(eltype(C))
+      for k ∈ indices((A, B), (3, 2))
+        Cₘₙ += A[2, m, k] * B[3, k, n] + A[3, m, k] * B[2, k, n]
+      end
+      C[4, m, n] = C[4, m, n] + α * Cₘₙ
     end
     _C
   end
