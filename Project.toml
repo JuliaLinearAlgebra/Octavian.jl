@@ -1,7 +1,7 @@
 name = "Octavian"
 uuid = "6fd5a793-0b7e-452c-907f-f8bfe9c57db4"
 authors = ["Chris Elrod", "Dilum Aluthge", "Mason Protter", "contributors"]
-version = "0.3.22"
+version = "0.3.23"
 
 [deps]
 CPUSummary = "2a0fbf3d-bb9c-48f3-b0a9-814d99fd7ab9"
