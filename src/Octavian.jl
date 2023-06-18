@@ -73,6 +73,9 @@ if !isdefined(Base, :get_extension)
   include("../ext/ForwardDiffExt.jl")
 end
 
+# TODO: confirm when we need this extension
+include("../ext/HyperDualNumbersExt.jl")
+
 @static if VERSION >= v"1.8.0-beta1"
   @setup_workload begin
     # Putting some things in `setup` can reduce the size of the
