@@ -44,9 +44,6 @@ end
     B2dual = deepcopy(B1dual)
     C2dual = deepcopy(C1dual)
 
-    α = Float64(2.0)
-    β = Float64(2.0)
-
     Octavian.matmul!(C1dual, A1, B1dual, α, β)
     LinearAlgebra.mul!(C2dual, A2, B2dual, α, β)
     @test reinterpret(Float64, C1dual) ≈ reinterpret(Float64, C2dual)
@@ -57,7 +54,6 @@ end
     A1dual = randdual(A1')
     C1dual = randdual(C1)
 
-    
     A2dual = deepcopy(A1dual)
     B2 = deepcopy(B1)
     C2dual = deepcopy(C1dual)
