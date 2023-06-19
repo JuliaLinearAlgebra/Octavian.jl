@@ -65,16 +65,15 @@ include("complex_matmul.jl")
 
 include("init.jl") # `Octavian.__init__()` is defined in this file
 
-# TODO: This loads ForwardDiff unconditionally on Julia v1.6 - v1.8.
+# TODO: This loads ForwardDiff.jl and HyperDualNumbers.jl
+#       unconditionally on Julia v1.6 - v1.8.
 #       It could be reconsidered when these older versions are not supported
-#       anymore. In this case, ForwardDiff should be removed from the
-#       dependencies and treated as weak dependency.
+#       anymore. In this case, these packages should be removed from the
+#       dependencies and treated only as weak dependency.
 if !isdefined(Base, :get_extension)
   include("../ext/ForwardDiffExt.jl")
+  include("../ext/HyperDualNumbersExt.jl")
 end
-
-# TODO: confirm when we need this extension
-include("../ext/HyperDualNumbersExt.jl")
 
 @static if VERSION >= v"1.8.0-beta1"
   @setup_workload begin

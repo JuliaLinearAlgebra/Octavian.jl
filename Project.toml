@@ -19,9 +19,11 @@ VectorizationBase = "3d5dd08c-fd9d-11e8-17fa-ed2836048c2f"
 
 [weakdeps]
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+HyperDualNumbers = "50ceba7f-c3ee-5a84-a6e8-3ad40456ec97"
 
 [extensions]
 ForwardDiffExt = "ForwardDiff"
+HyperDualNumbersExt = "HyperDualNumbers"
 
 [compat]
 CPUSummary = "0.1.26, 0.2.1"
