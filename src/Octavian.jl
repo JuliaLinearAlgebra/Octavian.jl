@@ -75,28 +75,5 @@ if !isdefined(Base, :get_extension)
   include("../ext/HyperDualNumbersExt.jl")
 end
 
-@static if VERSION >= v"1.8.0-beta1"
-  @setup_workload begin
-    # Putting some things in `setup` can reduce the size of the
-    # precompile file and potentially make loading faster.
-    __init__()
-    A64 = rand(100, 100)
-    A32 = rand(Float32, 100, 100)
-
-    @compile_workload begin
-      # All calls in this block will be precompiled, regardless of whether
-      # they belong to Octavian.jl or not (on Julia 1.8 and higher).
-      matmul(A64, A64)
-      matmul(A64', A64)
-      matmul(A64, A64')
-      matmul(A64', A64')
-
-      matmul(A32, A32)
-      matmul(A32', A32)
-      matmul(A32, A32')
-      matmul(A32', A32')
-    end
-  end
-end
 
 end # module Octavian
