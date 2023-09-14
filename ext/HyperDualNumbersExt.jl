@@ -1,10 +1,7 @@
 module HyperDualNumbersExt
 
 using HyperDualNumbers: Hyper
-using Octavian: ArrayInterface,
-                 @turbo, @tturbo,
-                 One, Zero,
-                 indices, static
+using Octavian: ArrayInterface, @turbo, @tturbo, One, Zero, indices, static
 import Octavian: real_rep, _matmul!, _matmul_serial!
 
 real_rep(a::AbstractArray{DualT}) where {T,DualT<:Hyper{T}} =
@@ -23,7 +20,7 @@ for AbstractVectorOrMatrix in (:AbstractVector, :AbstractMatrix)
     nthread::Nothing = nothing,
     MKN = nothing,
     contig_axis = nothing
-  ) where {T, DualT<:Hyper{T}}
+  ) where {T,DualT<:Hyper{T}}
     B = real_rep(_B)
     C = real_rep(_C)
 
@@ -52,9 +49,9 @@ for AbstractVectorOrMatrix in (:AbstractVector, :AbstractMatrix)
     MKN = nothing
   ) where {T,DualT<:Hyper{T}}
     if Bool(ArrayInterface.is_dense(_C)) &&
-      Bool(ArrayInterface.is_column_major(_C)) &&
-      Bool(ArrayInterface.is_dense(_A)) &&
-      Bool(ArrayInterface.is_column_major(_A))
+       Bool(ArrayInterface.is_column_major(_C)) &&
+       Bool(ArrayInterface.is_dense(_A)) &&
+       Bool(ArrayInterface.is_column_major(_A))
       # we can avoid the reshape and call the standard method
       A = reinterpret(T, _A)
       C = reinterpret(T, _C)
@@ -93,9 +90,9 @@ for AbstractVectorOrMatrix in (:AbstractVector, :AbstractMatrix)
     C = real_rep(_C)
     B = real_rep(_B)
     if Bool(ArrayInterface.is_dense(_C)) &&
-      Bool(ArrayInterface.is_column_major(_C)) &&
-      Bool(ArrayInterface.is_dense(_A)) &&
-      Bool(ArrayInterface.is_column_major(_A))
+       Bool(ArrayInterface.is_column_major(_C)) &&
+       Bool(ArrayInterface.is_dense(_A)) &&
+       Bool(ArrayInterface.is_column_major(_A))
       # we can avoid the reshape and call the standard method
       Ar = reinterpret(T, _A)
       Cr = reinterpret(T, _C)
@@ -139,7 +136,7 @@ for AbstractVectorOrMatrix in (:AbstractVector, :AbstractMatrix)
     α,
     β,
     MKN
-  ) where {T, DualT<:Hyper{T}}
+  ) where {T,DualT<:Hyper{T}}
     B = real_rep(_B)
     C = real_rep(_C)
 
@@ -157,7 +154,7 @@ for AbstractVectorOrMatrix in (:AbstractVector, :AbstractMatrix)
     _C
   end
 
-# multiplication of dual matrix by standard vector/matrix from the right
+  # multiplication of dual matrix by standard vector/matrix from the right
   @eval @inline function _matmul_serial!(
     _C::$(AbstractVectorOrMatrix){DualT},
     _A::AbstractMatrix{DualT},
@@ -167,9 +164,9 @@ for AbstractVectorOrMatrix in (:AbstractVector, :AbstractMatrix)
     MKN
   ) where {T,DualT<:Hyper{T}}
     if Bool(ArrayInterface.is_dense(_C)) &&
-      Bool(ArrayInterface.is_column_major(_C)) &&
-      Bool(ArrayInterface.is_dense(_A)) &&
-      Bool(ArrayInterface.is_column_major(_A))
+       Bool(ArrayInterface.is_column_major(_C)) &&
+       Bool(ArrayInterface.is_dense(_A)) &&
+       Bool(ArrayInterface.is_column_major(_A))
       # we can avoid the reshape and call the standard method
       A = reinterpret(T, _A)
       C = reinterpret(T, _C)
@@ -201,14 +198,14 @@ for AbstractVectorOrMatrix in (:AbstractVector, :AbstractMatrix)
     α,
     β,
     MKN
-  ) where {T, DualT<:Hyper{T}}
+  ) where {T,DualT<:Hyper{T}}
     A = real_rep(_A)
     C = real_rep(_C)
     B = real_rep(_B)
     if Bool(ArrayInterface.is_dense(_C)) &&
-      Bool(ArrayInterface.is_column_major(_C)) &&
-      Bool(ArrayInterface.is_dense(_A)) &&
-      Bool(ArrayInterface.is_column_major(_A))
+       Bool(ArrayInterface.is_column_major(_C)) &&
+       Bool(ArrayInterface.is_dense(_A)) &&
+       Bool(ArrayInterface.is_column_major(_A))
       # we can avoid the reshape and call the standard method
       Ar = reinterpret(T, _A)
       Cr = reinterpret(T, _C)

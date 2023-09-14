@@ -51,11 +51,11 @@ W₂Default() = W₂Default(has_feature(Val(:x86_64_avx512f)))
 R₁Default() = R₁Default(has_feature(Val(:x86_64_avx512f)))
 R₂Default() = R₂Default(has_feature(Val(:x86_64_avx512f)))
 
-@static if Sys.ARCH === :x86_64 || Sys.ARCH === :i686
-  first_cache() = StaticInt{2}()
-else
-  first_cache() = StaticInt{1}()
-end
+# @static if Sys.ARCH === :x86_64 || Sys.ARCH === :i686
+first_cache() = StaticInt{2}()
+# else
+# first_cache() = StaticInt{1}()
+# end
 
 second_cache() = first_cache() + One()
 
@@ -69,7 +69,11 @@ first_cache_size() = _first_cache_size(cache_size(first_cache()))
 
 _second_cache_size(scs::StaticInt, ::True) = scs - cache_size(first_cache())
 _second_cache_size(scs::StaticInt, ::False) = scs
-_second_cache_size(::StaticInt{0}, ::Nothing) = StaticInt(3145728)
+@static if (Sys.isapple() || occursin("apple", Sys.CPU_NAME::String)) && Sys.ARCH === :aarch64
+  _second_cache_size(::StaticInt{0}, ::False) = StaticInt(100663296)
+else
+  _second_cache_size(::StaticInt{0}, ::False) = StaticInt(3145728)
+end
 function second_cache_size()
   sc = second_cache()
   _second_cache_size(cache_size(sc), cache_inclusive(sc))
