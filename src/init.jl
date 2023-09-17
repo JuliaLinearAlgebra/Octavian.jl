@@ -14,15 +14,13 @@ function __init__()
 end
 
 function init_bcache()
+  BCACHEPTR[] == C_NULL || return
+  c = Threads.nthreads() * second_cache_size()
   if bcache_count() ≢ Zero()
-    if BCACHEPTR[] == C_NULL
-      BCACHEPTR[] = VectorizationBase.valloc(
-        Threads.nthreads() * second_cache_size() * bcache_count(),
-        Cvoid,
-        ccall(:jl_getpagesize, Int, ())
-      )
-    end
+    c *= bcache_count()
   end
+  BCACHEPTR[] =
+    VectorizationBase.valloc(c, Cvoid, ccall(:jl_getpagesize, Int, ()))
   nothing
 end
 

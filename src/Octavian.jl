@@ -75,5 +75,4 @@ if !isdefined(Base, :get_extension)
   include("../ext/HyperDualNumbersExt.jl")
 end
 
-
 end # module Octavian

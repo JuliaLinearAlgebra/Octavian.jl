@@ -133,7 +133,7 @@ function matrix_range(S, ::Type{T} = Float64) where {T}
   Cs, As, Bs
 end
 
-T = Float64
+T = Float32
 min_size = round(
   Int,
   sqrt(
