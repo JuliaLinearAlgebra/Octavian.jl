@@ -26,7 +26,7 @@ end
   @testset "real array from the right" begin
     A1dual = randdual(A1)
     C1dual = randdual(C1)
-    
+
     A2dual = deepcopy(A1dual)
     B2 = deepcopy(B1)
     C2dual = deepcopy(C1dual)
@@ -49,7 +49,6 @@ end
     @test reinterpret(Float64, C1dual) ≈ reinterpret(Float64, C2dual)
   end
 
-  
   @testset "transposed arrays" begin
     A1dual = randdual(A1')
     C1dual = randdual(C1)
@@ -67,13 +66,21 @@ end
 
     Cref = zeros(Float64, size(C1)...)
     LinearAlgebra.mul!(Cref, A1, B1)
-    @test (reinterpretHD(Float64, C1dual) ≈ reinterpretHD(Float64, C2dual) ≈ 
-          reinterpretHD(Float64, C3dual) ≈ reinterpretHD(Float64, C4dual) ≈ Cref) && 
-          (reinterpret(Float64, C1dual) ≈ reinterpret(Float64, C2dual) ≈ 
-          reinterpret(Float64, C3dual) ≈ reinterpret(Float64, C4dual) )
+    @test (
+      reinterpretHD(Float64, C1dual) ≈
+      reinterpretHD(Float64, C2dual) ≈
+      reinterpretHD(Float64, C3dual) ≈
+      reinterpretHD(Float64, C4dual) ≈
+      Cref
+    ) && (
+      reinterpret(Float64, C1dual) ≈
+      reinterpret(Float64, C2dual) ≈
+      reinterpret(Float64, C3dual) ≈
+      reinterpret(Float64, C4dual)
+    )
   end
 
-  @testset "two dual arrays" begin 
+  @testset "two dual arrays" begin
     A1d = randdual(A1)
     B1d = randdual(B1)
     @test reinterpret(Float64, Octavian.matmul(A1d, B1d, 1.3)) ≈
