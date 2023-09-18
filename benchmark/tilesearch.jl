@@ -227,5 +227,5 @@ opt = Optim.optimize(
   matmul_objective,
   init,
   ParticleSwarm(; lower = lower, upper = upper),
-  Optim.Options(; iterations = 10^6, time_limit = 4 * hours)
+  Optim.Options(; iterations = 10^6, time_limit = 8 * hours)
 );

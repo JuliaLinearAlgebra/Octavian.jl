@@ -20,10 +20,10 @@ MᵣW_mul_factor() = MᵣW_mul_factor(has_feature(Val(:x86_64_avx512f)))
 
 if Sys.ARCH === :aarch64 &&
    (Sys.isapple() || occursin("apple", Sys.CPU_NAME::String))
-  W₁Default() = StaticFloat64{0.19119452913446452}()
-  W₂Default() = StaticFloat64{0.06881147932103344}()
-  R₁Default() = StaticFloat64{0.6063993342216422}()
-  R₂Default() = StaticFloat64{0.5818994078464815}()
+  W₁Default() = StaticFloat64{0.1464967933382345}()
+  W₂Default() = StaticFloat64{0.07243228432052636}()
+  R₁Default() = StaticFloat64{0.5024723443788641}()
+  R₂Default() = StaticFloat64{0.9018940596921994}()
 else
   W₁Default(::True) = StaticFloat64{0.0007423708195588264}()
   W₂Default(::True) = StaticFloat64{0.7757548987718677}()
