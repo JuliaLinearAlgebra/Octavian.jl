@@ -16,7 +16,7 @@ makedocs(;
     "Getting Started" => "getting-started.md",
     "Public API" => "public-api.md",
     "Internals (Private)" => "internals.md"
-  ],
+  ]
 )
 
 deploydocs(; repo = "github.com/JuliaLinearAlgebra/Octavian.jl")

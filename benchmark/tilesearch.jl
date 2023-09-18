@@ -14,18 +14,19 @@ function matmul_pack_ab!(
   K = size(B, 1)
   zc, za, zb = Octavian.zstridedpointer.((C, A, B))
   nspawn = VectorizationBase.num_cores()
-  threads, torelease = Octavian.PolyesterWeave.__request_threads(
-    (nspawn - 1) % UInt32,
-    Octavian.PolyesterWeave.worker_pointer(),
-    nothing
-  )
+  nthreads = min(Int(nspawn), Threads.nthreads())
+  # threads, torelease = Octavian.PolyesterWeave.__request_threads(
+  #   (nspawn - 1) % UInt32,
+  #   Octavian.PolyesterWeave.worker_pointer(),
+  #   nothing
+  # )
   t = Inf
   GC.@preserve C A B begin
     for _ ∈ 1:2
       t = min(
         t,
         @elapsed(
-          Octavian.matmul_pack_A_and_B!(
+          Octavian.__matmul!(
             zc,
             za,
             zb,
@@ -34,7 +35,7 @@ function matmul_pack_ab!(
             M,
             K,
             N,
-            threads,
+            nthreads,
             F64(W₁),
             F64(W₂),
             F64(R₁),
@@ -44,7 +45,7 @@ function matmul_pack_ab!(
       )
     end
   end
-  Octavian.PolyesterWeave.free_threads!(torelease)
+  # Octavian.PolyesterWeave.free_threads!(torelease)
   return t
 end
 
@@ -134,24 +135,28 @@ function matrix_range(S, ::Type{T} = Float64) where {T}
 end
 
 T = Float32
-min_size = round(
-  Int,
-  sqrt(
-    (0.65 / 4) *
-    Octavian.num_cores() *
-    Octavian.VectorizationBase.cache_size(Val(3)) / sizeof(T)
-  )
+min_size = min(
+  round(
+    Int,
+    sqrt(
+      (0.65 / 4) * Octavian.num_cores() * Octavian.second_cache_size() /
+      sizeof(T)
+    )
+  ),
+  2000
 )
-max_size = round(
-  Int,
-  sqrt(
-    (32 / 4) *
-    Octavian.num_cores() *
-    Octavian.VectorizationBase.cache_size(Val(3)) / sizeof(T)
-  )
+max_size = min(
+  round(
+    Int,
+    sqrt(
+      (32 / 4) * Octavian.num_cores() * Octavian.second_cache_size() /
+      sizeof(T)
+    )
+  ),
+  10_000
 )
 
-SR = size_range(max_size, min_size, 400);
+SR = size_range(max_size, min_size, 40);
 const CsConst, AsConst, BsConst = matrix_range(SR, T);
 
 # using Hyperopt
@@ -213,7 +218,7 @@ init = Float64[
   Octavian.R₁Default(),
   Octavian.R₂Default()
 ]
-lower = 0.75 .* init;
+lower = 0.25 .* init;
 # upper = [1.25init[1], 1.25init[2], 0.75*init[3] + 0.25, 0.75*init[4] + 0.25];
 upper = [0.9, 1.25init[2], 0.999, 0.999];
 # init = [0.001, 0.9754033943603924, 0.5711159869399494, 0.7547361860432168];
@@ -222,5 +227,5 @@ opt = Optim.optimize(
   matmul_objective,
   init,
   ParticleSwarm(; lower = lower, upper = upper),
-  Optim.Options(; iterations = 10^6, time_limit = 14 * hours)
+  Optim.Options(; iterations = 10^6, time_limit = 4 * hours)
 );
