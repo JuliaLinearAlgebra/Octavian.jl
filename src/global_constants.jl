@@ -57,6 +57,7 @@ else
   W₂Default() = W₂Default(has_feature(Val(:x86_64_avx512f)))
   R₁Default() = R₁Default(has_feature(Val(:x86_64_avx512f)))
   R₂Default() = R₂Default(has_feature(Val(:x86_64_avx512f)))
+
 end
 
 # @static if Sys.ARCH === :x86_64 || Sys.ARCH === :i686
