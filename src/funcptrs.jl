@@ -1,8 +1,8 @@
 
-struct LoopMulFunc{P,TC,TA,TB,Α,Β,Md,Kd,Nd} <: Function end
-function (::LoopMulFunc{P,TC,TA,TB,Α,Β,Md,Kd,Nd})(
+struct LoopMulFunc{P,TC,TA,TB,Α,Β,Md,Kd,Nd,W₁,W₂,R₁,R₂} <: Function end
+function (::LoopMulFunc{P,TC,TA,TB,Α,Β,Md,Kd,Nd,W₁,W₂,R₁,R₂})(
   p::Ptr{UInt}
-) where {P,TC,TA,TB,Α,Β,Md,Kd,Nd}
+) where {P,TC,TA,TB,Α,Β,Md,Kd,Nd,W₁,W₂,R₁,R₂}
   offset, C = load(p, TC, 2 * sizeof(UInt))
   offset, A = load(p, TA, offset)
   offset, B = load(p, TB, offset)
@@ -11,11 +11,25 @@ function (::LoopMulFunc{P,TC,TA,TB,Α,Β,Md,Kd,Nd})(
   offset, M = load(p, Md, offset)
   offset, K = load(p, Kd, offset)
   offset, N = load(p, Nd, offset)
-  _call_loopmul!(C, A, B, α, β, M, K, N, Val{P}())
+  _call_loopmul!(
+    C,
+    A,
+    B,
+    α,
+    β,
+    M,
+    K,
+    N,
+    Val{P}(),
+    static(W₁),
+    static(W₂),
+    static(R₁),
+    static(R₂)
+  )
   _atomic_store!(p, SPIN)
   nothing
 end
-@inline _call_loopmul!(C, A, B, α, β, M, K, N, ::Val{false}) =
+@inline _call_loopmul!(C, A, B, α, β, M, K, N, ::Val{false}, W₁, W₂, R₁, R₂) =
   loopmul!(C, A, B, α, β, M, K, N)
 @inline function _call_loopmul!(
   C::StridedPointer{T},
@@ -26,31 +40,20 @@ end
   M,
   K,
   N,
-  ::Val{true}
+  ::Val{true},
+  W₁,
+  W₂,
+  R₁,
+  R₂
 ) where {T}
-  if M * K < ceil(Int, Float64(first_cache_size(Val(T)) * R₂Default()))
+  if M * K < ceil(Int, Float64(first_cache_size(Val(T)) * R₂))
     packaloopmul!(C, A, B, α, β, M, K, N)
     return
   else
-    matmul_st_only_pack_A!(
-      C,
-      A,
-      B,
-      α,
-      β,
-      M,
-      K,
-      N,
-      W₁Default(),
-      W₂Default(),
-      R₁Default(),
-      R₂Default()
-    )
+    matmul_st_only_pack_A!(C, A, B, α, β, M, K, N, W₁, W₂, R₁, R₂)
     return
   end
 end
-call_loopmul!(C, A, B, α, β, M, K, N, ::Val{P}) where {P} =
-  _call_loopmul!(C, A, B, α, β, M, K, N, Val{P}())
 
 struct SyncMulFunc{TC,TA,TB,Α,Β,Md,Kd,Nd,BCP,ID,TT,W₁,W₂,R₁,R₂} <: Function end
 function (::SyncMulFunc{TC,TA,TB,Α,Β,Md,Kd,Nd,BCP,ID,TT,W₁,W₂,R₁,R₂})(
@@ -108,11 +111,15 @@ end
   M::Md,
   K::Kd,
   N::Nd,
-  ::Val{P}
-) where {P,TC,TA,TB,Α,Β,Md,Kd,Nd}
+  ::Val{P},
+  ::StaticFloat64{W₁},
+  ::StaticFloat64{W₂},
+  ::StaticFloat64{R₁},
+  ::StaticFloat64{R₂}
+) where {P,TC,TA,TB,Α,Β,Md,Kd,Nd,W₁,W₂,R₁,R₂}
   offset = store!(
     p,
-    cfuncpointer(LoopMulFunc{P,TC,TA,TB,Α,Β,Md,Kd,Nd}()),
+    cfuncpointer(LoopMulFunc{P,TC,TA,TB,Α,Β,Md,Kd,Nd,W₁,W₂,R₁,R₂}()),
     sizeof(UInt)
   )
   offset = store!(p, C, offset)
@@ -136,9 +143,13 @@ end
   K,
   N,
   tid::UInt32,
-  ::Val{P}
+  ::Val{P},
+  W₁,
+  W₂,
+  R₁,
+  R₂
 ) where {P}
-  launch(setup_matmul!, tid, C, A, B, α, β, M, K, N, Val{P}())
+  launch(setup_matmul!, tid, C, A, B, α, β, M, K, N, Val{P}(), W₁, W₂, R₁, R₂)
 end
 
 struct SyncMulLauncher{W₁,W₂,R₁,R₂} end

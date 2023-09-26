@@ -594,7 +594,11 @@ function matmulsplitn!(
   K,
   N,
   threads,
-  ::Val{PACK}
+  ::Val{PACK},
+  W₁,
+  W₂,
+  R₁,
+  R₂
 ) where {T,Mc,PACK}
   Mᵣ, Nᵣ = matmul_params(Val(T))
   W = pick_vector_width(T)
@@ -635,7 +639,11 @@ function matmulsplitn!(
             K,
             nsize,
             tnum,
-            Val{PACK}()
+            Val{PACK}(),
+            W₁,
+            W₂,
+            R₁,
+            R₂
           )
           _A = gesp(_A, (msize, Zero()))
           _C = gesp(_C, (msize, Zero()))
@@ -652,10 +660,28 @@ function matmulsplitn!(
             K,
             nsize,
             tnum,
-            Val{PACK}()
+            Val{PACK}(),
+            W₁,
+            W₂,
+            R₁,
+            R₂
           )
         else
-          call_loopmul!(_C, _A, _B, α, β, Mremfinal, K, nsize, Val{PACK}())
+          _call_loopmul!(
+            _C,
+            _A,
+            _B,
+            α,
+            β,
+            Mremfinal,
+            K,
+            nsize,
+            Val{PACK}(),
+            W₁,
+            W₂,
+            R₁,
+            R₂
+          )
           waitonmultasks(threads, _nspawn)
           return
         end
@@ -675,11 +701,15 @@ function __matmul!(
   M,
   K,
   N,
-  nthread
+  nthread,
+  W₁ = W₁Default(),
+  W₂ = W₂Default(),
+  R₁ = R₁Default(),
+  R₂ = R₂Default()
 ) where {T}
   _, nᵣ = matmul_params(Val(T))
   W = pick_vector_width(T)
-  Mc, Kc, _Nc = block_sizes(Val(T))
+  Mc, Kc, _Nc = block_sizes(Val(T), W₁, W₂, R₁, R₂)
   Nc = _Nc * min(Threads.nthreads(), num_cores())
   # Not taking the fast path
   # But maybe we don't want to thread anyway
@@ -722,30 +752,48 @@ function __matmul!(
      (nᵣ * ((num_cores() ≥ StaticInt(8)) ? max(nspawn, 8) : 8) ≥ N)
     # `nᵣ*nspawn ≥ N` is needed at the moment to avoid accidentally splitting `N` to be `< nᵣ` while packing
     # Should probably handle that with a smarter splitting function...
-    matmulsplitn!(C, A, B, α, β, Mc, M, K, N, threads, Val{false}())
+    matmulsplitn!(
+      C,
+      A,
+      B,
+      α,
+      β,
+      Mc,
+      M,
+      K,
+      N,
+      threads,
+      Val{false}(),
+      W₁,
+      W₂,
+      R₁,
+      R₂
+    )
   elseif (bcache_count() === Zero()) || (
     (nspawn * (W + W) > M) || (
       contiguousstride1(B) ? (roundtostaticint(Kc * Nc * R₂Default()) ≥ K * N) :
       (firstbytestride(B) ≤ 1600)
     )
   )
-    matmulsplitn!(C, A, B, α, β, Mc, M, K, N, threads, Val{true}())
-  else # TODO: Allow splitting along `N` for `matmul_pack_A_and_B!`
-    matmul_pack_A_and_B!(
+    matmulsplitn!(
       C,
       A,
       B,
       α,
       β,
+      Mc,
       M,
       K,
       N,
       threads,
-      W₁Default(),
-      W₂Default(),
-      R₁Default(),
-      R₂Default()
+      Val{true}(),
+      W₁,
+      W₂,
+      R₁,
+      R₂
     )
+  else # TODO: Allow splitting along `N` for `matmul_pack_A_and_B!`
+    matmul_pack_A_and_B!(C, A, B, α, β, M, K, N, threads, W₁, W₂, R₁, R₂)
   end
   PolyesterWeave.free_threads!(torelease)
   nothing

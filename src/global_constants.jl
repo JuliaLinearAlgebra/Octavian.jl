@@ -18,45 +18,46 @@ MᵣW_mul_factor(::True) = StaticInt{4}()
 MᵣW_mul_factor(::False) = StaticInt{9}()
 MᵣW_mul_factor() = MᵣW_mul_factor(has_feature(Val(:x86_64_avx512f)))
 
-
-if Sys.ARCH === :aarch64 && (Sys.isapple() || occursin("apple", Sys.CPU_NAME::String))
-  W₁Default() = StaticFloat64{0.23015506935919203}()
-W₂Default() = StaticFloat64{0.16967706087713014}()
-R₁Default() = StaticFloat64{0.9982516031563079}()
-R₂Default() = StaticFloat64{0.5167030291302886}()
+if Sys.ARCH === :aarch64 &&
+   (Sys.isapple() || occursin("apple", Sys.CPU_NAME::String))
+  W₁Default() = StaticFloat64{0.1464967933382345}()
+  W₂Default() = StaticFloat64{0.07243228432052636}()
+  R₁Default() = StaticFloat64{0.5024723443788641}()
+  R₂Default() = StaticFloat64{0.9018940596921994}()
 else
-W₁Default(::True) = StaticFloat64{0.0007423708195588264}()
-W₂Default(::True) = StaticFloat64{0.7757548987718677}()
-R₁Default(::True) = StaticFloat64{0.7936663315339363}()
-R₂Default(::True) = StaticFloat64{0.7144577794375783}()
+  W₁Default(::True) = StaticFloat64{0.0007423708195588264}()
+  W₂Default(::True) = StaticFloat64{0.7757548987718677}()
+  R₁Default(::True) = StaticFloat64{0.7936663315339363}()
+  R₂Default(::True) = StaticFloat64{0.7144577794375783}()
 
-W₁Default_arch(::Val{:znver1}) = StaticFloat64{0.053918949422353986}()
-W₂Default_arch(::Val{:znver1}) = StaticFloat64{0.3013238122374886}()
-R₁Default_arch(::Val{:znver1}) = StaticFloat64{0.6077103834481342}()
-R₂Default_arch(::Val{:znver1}) = StaticFloat64{0.8775382433240162}()
+  W₁Default_arch(::Val{:znver1}) = StaticFloat64{0.053918949422353986}()
+  W₂Default_arch(::Val{:znver1}) = StaticFloat64{0.3013238122374886}()
+  R₁Default_arch(::Val{:znver1}) = StaticFloat64{0.6077103834481342}()
+  R₂Default_arch(::Val{:znver1}) = StaticFloat64{0.8775382433240162}()
 
-W₁Default_arch(::Union{Val{:znver2},Val{:znver3}}) = StaticFloat64{0.1}()
-W₂Default_arch(::Union{Val{:znver2},Val{:znver3}}) =
-  StaticFloat64{0.993489411720157}()
-R₁Default_arch(::Union{Val{:znver2},Val{:znver3}}) =
-  StaticFloat64{0.6052218809954467}()
-R₂Default_arch(::Union{Val{:znver2},Val{:znver3}}) =
-  StaticFloat64{0.7594052633561165}()
+  W₁Default_arch(::Union{Val{:znver2},Val{:znver3}}) = StaticFloat64{0.1}()
+  W₂Default_arch(::Union{Val{:znver2},Val{:znver3}}) =
+    StaticFloat64{0.993489411720157}()
+  R₁Default_arch(::Union{Val{:znver2},Val{:znver3}}) =
+    StaticFloat64{0.6052218809954467}()
+  R₂Default_arch(::Union{Val{:znver2},Val{:znver3}}) =
+    StaticFloat64{0.7594052633561165}()
 
-W₁Default_arch(_) = StaticFloat64{0.05846951331683783}()
-W₂Default_arch(_) = StaticFloat64{0.16070447575367697}()
-R₁Default_arch(_) = StaticFloat64{0.5370318382263098}()
-R₂Default_arch(_) = StaticFloat64{0.5584398748982029}()
+  W₁Default_arch(_) = StaticFloat64{0.05846951331683783}()
+  W₂Default_arch(_) = StaticFloat64{0.16070447575367697}()
+  R₁Default_arch(_) = StaticFloat64{0.5370318382263098}()
+  R₂Default_arch(_) = StaticFloat64{0.5584398748982029}()
 
-W₁Default(::False) = W₁Default_arch(VectorizationBase.cpu_name())
-W₂Default(::False) = W₂Default_arch(VectorizationBase.cpu_name())
-R₁Default(::False) = R₁Default_arch(VectorizationBase.cpu_name())
-R₂Default(::False) = R₂Default_arch(VectorizationBase.cpu_name())
+  W₁Default(::False) = W₁Default_arch(VectorizationBase.cpu_name())
+  W₂Default(::False) = W₂Default_arch(VectorizationBase.cpu_name())
+  R₁Default(::False) = R₁Default_arch(VectorizationBase.cpu_name())
+  R₂Default(::False) = R₂Default_arch(VectorizationBase.cpu_name())
 
-W₁Default() = W₁Default(has_feature(Val(:x86_64_avx512f)))
-W₂Default() = W₂Default(has_feature(Val(:x86_64_avx512f)))
-R₁Default() = R₁Default(has_feature(Val(:x86_64_avx512f)))
-R₂Default() = R₂Default(has_feature(Val(:x86_64_avx512f)))
+  W₁Default() = W₁Default(has_feature(Val(:x86_64_avx512f)))
+  W₂Default() = W₂Default(has_feature(Val(:x86_64_avx512f)))
+  R₁Default() = R₁Default(has_feature(Val(:x86_64_avx512f)))
+  R₂Default() = R₂Default(has_feature(Val(:x86_64_avx512f)))
+
 end
 
 # @static if Sys.ARCH === :x86_64 || Sys.ARCH === :i686
@@ -77,7 +78,8 @@ first_cache_size() = _first_cache_size(cache_size(first_cache()))
 
 _second_cache_size(scs::StaticInt, ::True) = scs - cache_size(first_cache())
 _second_cache_size(scs::StaticInt, ::False) = scs
-@static if (Sys.isapple() || occursin("apple", Sys.CPU_NAME::String)) && Sys.ARCH === :aarch64
+@static if (Sys.isapple() || occursin("apple", Sys.CPU_NAME::String)) &&
+           Sys.ARCH === :aarch64
   _second_cache_size(::StaticInt{0}, ::False) = StaticInt(100663296)
 else
   _second_cache_size(::StaticInt{0}, ::False) = StaticInt(3145728)
