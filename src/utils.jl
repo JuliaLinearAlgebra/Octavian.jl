@@ -103,3 +103,7 @@ end
     stridedpointer($gf(sp, :p), si, StaticInt{$Bn}())
   end
 end
+
+__add(x, y) = x + y
+__add(x::Ptr, ::StaticInt{N}) where {N} = x + N
+__add(::StaticInt{N}, y::Ptr) where {N} = y + N

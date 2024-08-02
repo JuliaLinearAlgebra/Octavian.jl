@@ -1,9 +1,4 @@
 @testset "Aqua.jl" begin
-  Aqua.test_all(
-    Octavian;
-    ambiguities = false,
-    project_toml_formatting = false,
-    stale_deps = (; ignore = [:ForwardDiff])
-  )
-  @test isempty(Test.detect_ambiguities(Octavian))
+    Aqua.test_all(Octavian; deps_compat=false, ambiguities=false)
+    Aqua.test_ambiguities(Octavian; recursive=false)
 end

@@ -965,7 +965,7 @@ function sync_mul!(
             while _atomic_load(atomp) ≠ sync_iters
               pause()
             end
-            atomp += cache_linesize()
+            atomp = __add(atomp, cache_linesize())
           end
         end
         # multiply
@@ -994,7 +994,7 @@ function sync_mul!(
             while _atomic_load(atomp + 4) ≠ sync_iters
               pause()
             end
-            atomp += cache_linesize()
+            atomp = __add(atomp, cache_linesize())
           end
         end
       end
