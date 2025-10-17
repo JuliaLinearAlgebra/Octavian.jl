@@ -5,8 +5,8 @@
   7   8   9  10
  11  12  13  14
  15  16  17  18</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; C = Matrix{Int}(undef, 2, 4)</code><code class="nohighlight hljs ansi" style="display:block;">2×4 Matrix{Int64}:
-               5  139774195138568  139774177967632  139774177967696
- 139774177966832  139774177966896  139774177967568  139774177967728</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; matmul!(C, A, B) # (multi-threaded) multiply A×B and store the result in C (overwriting the contents of C)</code><code class="nohighlight hljs ansi" style="display:block;">2×4 Matrix{Int64}:
+               1                2                3                2
+ 139911660211888  139911660211920  139911660211952  139911660211984</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; matmul!(C, A, B) # (multi-threaded) multiply A×B and store the result in C (overwriting the contents of C)</code><code class="nohighlight hljs ansi" style="display:block;">2×4 Matrix{Int64}:
   74   80   86   92
  173  188  203  218</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; C</code><code class="nohighlight hljs ansi" style="display:block;">2×4 Matrix{Int64}:
   74   80   86   92
